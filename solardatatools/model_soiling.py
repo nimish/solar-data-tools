@@ -88,8 +88,8 @@ def simulate_PV_time_series(
 
 
 def simulate_PV_time_series_seasonal_soiling(
-    first_date,
-    last_date,
+    first_date: str,
+    last_date: str,
     freq="1D",
     degradation_rate=-0.005,
     noise_scale=0.01,
@@ -98,15 +98,14 @@ def simulate_PV_time_series_seasonal_soiling(
     soiling_rate_center=0.002,
     soiling_rate_std=0.001,
     soiling_seasonality_scale=0.9,
-    random_seed=False,
+    random_seed: int | None = None,
     smooth_rates=False,
     seasonal_rates=False,
 ):
     """As the name implies, this function models soiling rates that vary from day to day according
     to a Gaussian distribution"""
-    if random_seed:  # Have seed for repeatability
-        if not type(np.random.seed) == int:
-            np.random.seed(int(random_seed))
+    if random_seed is not None:  # Have seed for repeatability
+        np.random.seed(random_seed)
 
     # Initialize time series and data frame
     times = pd.date_range(first_date, last_date, freq=freq)

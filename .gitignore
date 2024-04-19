@@ -1,5 +1,6 @@
 Dask-CMU/
 Parallelization-CMU/
+.ruff_cache/
 
 # Created by https://www.gitignore.io/api/data,macos,python,pycharm,database,sublimetext,jupyternotebook
 # Edit at https://www.gitignore.io/?templates=data,macos,python,pycharm,database,sublimetext,jupyternotebook
@@ -326,4 +327,3 @@ tags
 /sdt_dask/dataplugs/example_data
 /sdt_dask/dataplugs/spwr_sensor_0
 /sdt_dask/results
-

@@ -88,9 +88,9 @@ class TiltAzimuthStudy:
                 "full_year": None,
             }
 
-        elif day_range is "full_year":
+        elif day_range == "full_year":
             self.day_range_dict = {"full_year": None}
-        elif day_range is "manual":
+        elif day_range == "manual":
             self.day_range_dict = {"manual": day_range}
 
         self.data_matrix = self.data_handler.filled_data_matrix

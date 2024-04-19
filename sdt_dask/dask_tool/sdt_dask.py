@@ -6,28 +6,50 @@ It takes a data plug and a dask client as input and runs the pipeline on the dat
 See the README and tool_demo_SDTDask.ipynb for more information
 
 """
+
+from collections import defaultdict
 import os
+from typing import Any
 import pandas as pd
 from dask import delayed
 from dask.distributed import performance_report
+from sdt_dask.dataplugs.dataplug import DataPlug
 from solardatatools import DataHandler
+from dataclasses import dataclass
+
+
+@dataclass
+class DaskErrors:
+    run_pipeline_errors: str | None = None
+    run_pipeline_report_errors: str | None = None
+    run_loss_analysis_errors: str | None = None
+    loss_analysis_report_errors: str | None = None
+
+
+@dataclass
+class Data:
+    reports: dict[str, Any] | None = None
+    loss_reports: dict[str, Any] | None = None
+    runtime: str | None = None
+    errors: DaskErrors | None
+
 
 class SDTDask:
     """A class to run the SolarDataTools pipeline on a Dask cluster.
-        Will handle invalid data keys and failed datasets.
+    Will handle invalid data keys and failed datasets.
 
-        :param keys: 
-            data_plug (:obj:`DataPlug`): The data plug object.
-            client (:obj:`Client`): The Dask client object.
-            output_path (str): The path to save the results.
+    :param keys:
+        data_plug (:obj:`DataPlug`): The data plug object.
+        client (:obj:`Client`): The Dask client object.
+        output_path (str): The path to save the results.
     """
 
     def __init__(self, data_plug, client, output_path="../results/"):
         self.data_plug = data_plug
         self.client = client
         self.output_path = output_path
-        
-    def set_up(self, KEYS, **kwargs):
+
+    def set_up(self, KEYS: list, **kwargs: dict[str, Any]):
         """function to set up the pipeline on the data plug
 
         Call run_pipeline functions in a for loop over the keys
@@ -44,63 +66,43 @@ class SDTDask:
         losses = []
         get_data_errors = []
         errors = []
-    
-        class Data:
-            reports = None
-            loss_reports = None
-            runtime = None
-            errors = None
-            def __init__(self, report, loss_report, runtime, errors):
-                self.report = report
-                self.loss_report = loss_report
-                self.runtime = runtime
-                self.errors = errors
 
-        
-        class DaskErrors:
-            run_pipeline_errors = None
-            run_pipeline_report_errors = None
-            run_loss_analysis_errors = None
-            loss_analysis_report_errors = None
-            def __init__(self, run_pipeline_errors, run_loss_analysis_errors, run_pipeline_report_errors, loss_analysis_report_errors):
-                self.run_pipeline_errors = run_pipeline_errors
-                self.run_pipeline_report_errors = run_pipeline_report_errors
-                self.run_loss_analysis_errors = run_loss_analysis_errors
-                self.loss_analysis_report_errors = loss_analysis_report_errors
-
-            @staticmethod
-            def get_attrs():
-                # return [attr for attr in dir(DaskErrors) if not callable(getattr(DaskErrors,attr)) and not attr.startswith("__")]
-                return ["run_pipeline_errors", "run_pipeline_report_errors", "run_loss_analysis_errors", "loss_analysis_report_errors"]
-
-
-        def run(datahandler, **kwargs):
-            run_pipeline_error = None
+        def run(datahandler: DataHandler, **kwargs: dict) -> DataHandler:
             if datahandler is None:
                 return None
             try:
                 datahandler.run_pipeline(**kwargs)
                 if datahandler.num_days <= 365:
                     datahandler.run_loss_analysis_error = "The length of data is less than or equal to 1 year, loss analysis will fail thus is not performed."
-                    datahandler.loss_analysis_report_error = "Loss analysis is not performed"
+                    datahandler.loss_analysis_report_error = (
+                        "Loss analysis is not performed"
+                    )
                     return datahandler
             except Exception as e:
                 datahandler.run_pipeline_error = str(e)
-                datahandler.run_loss_analysis_error = "Failed because of run_pipeline error"
-                datahandler.run_pipeline_report_error = "Failed because of run_pipeline error"
-                datahandler.loss_analysis_report_error = "Failed because of run_pipeline error"
+                datahandler.run_loss_analysis_error = (
+                    "Failed because of run_pipeline error"
+                )
+                datahandler.run_pipeline_report_error = (
+                    "Failed because of run_pipeline error"
+                )
+                datahandler.loss_analysis_report_error = (
+                    "Failed because of run_pipeline error"
+                )
                 return datahandler
 
-            try: 
+            try:
                 datahandler.run_loss_factor_analysis()
-            except Exception as e:  
+            except Exception as e:
                 datahandler.run_loss_analysis_error = str(e)
-                datahandler.loss_analysis_report_error = "Failed because of run_loss_analysis error"
+                datahandler.loss_analysis_report_error = (
+                    "Failed because of run_loss_analysis error"
+                )
                 return datahandler
 
             return datahandler
 
-        def handle_report(datahandler):
+        def handle_report(datahandler: DataHandler) -> Data:
             report = None
             loss_report = None
             runtime = None
@@ -109,9 +111,14 @@ class SDTDask:
             run_pipeline_report_error = None
             loss_analysis_report_error = None
             if datahandler is None:
-                errors = DaskErrors("get_data error leading nothing to run", "get_data error leading nothing to analyze", "get_data error leading nothing to report", "get_data error leading nothing to report")
+                errors = DaskErrors(
+                    "get_data error leading nothing to run",
+                    "get_data error leading nothing to analyze",
+                    "get_data error leading nothing to report",
+                    "get_data error leading nothing to report",
+                )
                 return Data(report, loss_report, runtime, errors)
-            
+
             if hasattr(datahandler, "run_pipeline_error"):
                 run_pipeline_error = datahandler.run_pipeline_error
             else:
@@ -119,7 +126,7 @@ class SDTDask:
                     report = datahandler.report(return_values=True, verbose=False)
                 except Exception as e:
                     datahandler.run_pipeline_report_error = str(e)
-            
+
             if hasattr(datahandler, "run_loss_analysis_error"):
                 run_loss_analysis_error = datahandler.run_loss_analysis_error
             else:
@@ -132,48 +139,49 @@ class SDTDask:
                 runtime = datahandler.total_time
             except Exception as e:
                 print(e)
-            
+
             if hasattr(datahandler, "run_pipeline_report_error"):
                 run_pipeline_report_error = datahandler.run_pipeline_report_error
 
             if hasattr(datahandler, "loss_analysis_report_error"):
                 loss_analysis_report_error = datahandler.loss_analysis_report_error
-            
-            errors = DaskErrors(run_pipeline_error, run_loss_analysis_error, run_pipeline_report_error, loss_analysis_report_error)
+
+            errors = DaskErrors(
+                run_pipeline_error,
+                run_loss_analysis_error,
+                run_pipeline_report_error,
+                loss_analysis_report_error,
+            )
             return Data(report, loss_report, runtime, errors)
 
-        def generate_report(reports, losses):
+        def generate_report(reports, losses) -> pd.DataFrame:
             reports = helper_data(reports)
             losses = helper_data(losses)
             df_reports = pd.DataFrame(reports)
             loss_reports = pd.DataFrame(losses)
             return pd.concat([df_reports, loss_reports], axis=1)
 
-        def helper_data(datas):
-            return [data if data is not None else {} for data in datas]
-        
-        def generate_errors(errors):
+        def helper_data(datas) -> list[dict[str, Any]]:
+            return [data or {} for data in datas]
+
+        def generate_errors(errors) -> dict[str, list[str]]:
             # input is a list of Errors objects
             # output is a attribute-list dictionary
             # go through all member in Errors
-            errors_dict = {}
-            for key in DaskErrors.get_attrs():
-                errors_dict[key] = []
+            errors_dict = defaultdict(list)
             for error in errors:
                 for key in DaskErrors.get_attrs():
-                    err = getattr(error, key)
-                    if err is not None:
-                        errors_dict[key].append(err)
-                    else:
-                        errors_dict[key].append("No Error")
-            return errors_dict
-        
-        class DataHandlerData():
-            def __init__(self, dh, error):
-                self.dh = dh
-                self.error = error
+                    err = getattr(error, key, "No Error")
+                    errors_dict[key].append(err)
 
-        def safe_get_data(data_plug, key):
+            return errors_dict
+
+        @dataclass
+        class DataHandlerData:
+            dh: DataHandler
+            error: str
+
+        def safe_get_data(data_plug: DataPlug, key: str) -> DataHandlerData:
             datahandler = None
             error = "No Error"
             try:
@@ -185,7 +193,6 @@ class SDTDask:
             return DataHandlerData(datahandler, error)
 
         for key in KEYS:
-
             dh_data = delayed(safe_get_data)(self.data_plug, key)
             dh_run = delayed(run)(dh_data.dh, **kwargs)
             data = delayed(handle_report)(dh_run)
@@ -195,7 +202,7 @@ class SDTDask:
             runtimes.append(data.runtime)
             get_data_errors.append(dh_data.error)
             errors.append(data.errors)
-    
+
         # append losses to the report
         df_reports = delayed(generate_report)(reports, losses)
         # generate error dictionary for dataframe

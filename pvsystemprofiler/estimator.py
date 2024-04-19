@@ -13,7 +13,6 @@ from solardatatools.solar_noon import energy_com, avg_sunrise_sunset
 
 # Module Imports
 from pvsystemprofiler.utilities.equation_of_time import eot_da_rosa, eot_duffie
-from solardatatools.algorithms import SunriseSunset
 from pvsystemprofiler.algorithms.latitude.hours_daylight import calculate_hours_daylight
 from pvsystemprofiler.utilities.hour_angle_equation import calculate_omega
 from pvsystemprofiler.utilities.declination_equation import delta_cooper
@@ -27,9 +26,6 @@ from pvsystemprofiler.algorithms.angle_of_incidence.dynamic_value_functions impo
 )
 from pvsystemprofiler.algorithms.angle_of_incidence.dynamic_value_functions import (
     select_init_values,
-)
-from pvsystemprofiler.algorithms.tilt_azimuth.daytime_threshold_quantile import (
-    filter_data,
 )
 from pvsystemprofiler.utilities.tools import random_initial_values
 from pvsystemprofiler.algorithms.longitude.estimation import estimate_longitude

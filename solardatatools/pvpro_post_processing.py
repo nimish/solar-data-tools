@@ -20,6 +20,15 @@ from sklearn.preprocessing import MaxAbsScaler
 from time import time
 from solardatatools.utilities import progress
 
+import enum
+
+
+class AcceptableModels(str, enum.Enum):
+    linear = "linear"
+    monotonic = "monotonic"
+    smooth_monotonic = "smooth_monotonic"
+    piecewise_linear = "piecewise_linear"
+
 
 class PVPROPostProcessor:
     """This is a class to process a dataset, perform signal decomposition to
@@ -98,10 +107,10 @@ class PVPROPostProcessor:
             self.df_ds = self.df
 
         # processing steps
-        if bp == True:
+        if bp:
             self.boundary_points(verbose=verbose)
             self.boundary_to_nan()
-        df_scaled = self.scale_max_1()
+        self.scale_max_1()
         df_p = self.ln_df()
 
         # attributes
@@ -268,10 +277,10 @@ class PVPROPostProcessor:
 
     def optimize(
         self,
-        label,
+        label: str,
         lambda4,
         lambda5,
-        model,
+        model: AcceptableModels,
         lambda2=0.001,
         verbose=False,
         known=None,
@@ -311,18 +320,13 @@ class PVPROPostProcessor:
         :type solver: str, optional
         """
 
-        acceptable_models = [
-            "linear",
-            "monotonic",
-            "smooth_monotonic",
-            "piecewise_linear",
-        ]
-
-        if model not in acceptable_models:
-            print("check model entry")
+        if model not in AcceptableModels.__members__:
+            raise ValueError(
+                f"{model=} must be one of the following: ",
+                AcceptableModels.__members__.keys(),
+            )
 
         # initializing data and characteristic values
-        data = self.df_p[label]
         y = self.df_p[label].values
         T = len(y)
         p = self.period
@@ -333,17 +337,14 @@ class PVPROPostProcessor:
         else:
             known = np.logical_and(known, ~np.isnan(y))
 
-        if "series" in label:
-            decreasing = False
-        else:
-            decreasing = True
-
+        decreasing = "series" not in label
+        xvars = [cp.Variable(T) for _ in range(5)]
         # components
-        x1 = cp.Variable(T)
-        x2 = cp.Variable(T)
-        x3 = cp.Variable(T)
-        x4 = cp.Variable(T)
-        x5 = cp.Variable(T)
+        x1 = xvars[0]
+        x2 = xvars[1]
+        x3 = xvars[2]
+        x4 = xvars[3]
+        x5 = xvars[4]
 
         # weights
         lambda_2 = cp.Parameter(value=lambda2, nonneg=True)
@@ -358,7 +359,7 @@ class PVPROPostProcessor:
         )
 
         constraints = [
-            y[known] == (x1 + x2 + x3 + x4 + x5)[known],
+            y[known] == sum(xvars)[known],
             cp.diff(x3, k=1) == 0,
             cp.sum(x4[:p]) == 0,
             x4[p:] == x4[:-p],
@@ -369,7 +370,7 @@ class PVPROPostProcessor:
         if model == "linear":
             constraints.append(cp.diff(x5, k=2) == 0)
         else:
-            if decreasing == True:
+            if decreasing:
                 constraints.append(cp.diff(x5, k=1) <= 0)
             else:
                 constraints.append(cp.diff(x5, k=1) >= 0)
@@ -386,17 +387,22 @@ class PVPROPostProcessor:
         if solver == "Default":
             solver = "OSQP"
 
+        solver_args = {
+            "solver": solver,
+            "verbose": verbose,
+        }
+
         if solver == "OSQP":
-            prob.solve(
-                solver=solver,
-                verbose=verbose,
-                eps_prim_inf=1 * 10 ** (-6),
-                eps_dual_inf=1 * 10 ** (-6),
-                eps_rel=1 * 10 ** (-6),
-                eps_abs=1 * 10 ** (-6),
+            solver_args.update(
+                {
+                    "eps_prim_inf": 1 * 10 ** (-6),
+                    "eps_dual_inf": 1 * 10 ** (-6),
+                    "eps_rel": 1 * 10 ** (-6),
+                    "eps_abs": 1 * 10 ** (-6),
+                }
             )
-        else:
-            prob.solve(solver=solver, verbose=verbose)
+
+        prob.solve(**solver_args)
 
         # resulting components
         df_components = pd.DataFrame(
@@ -407,7 +413,7 @@ class PVPROPostProcessor:
                 "x3": x3.value,
                 "x4": x4.value,
                 "x5": x5.value,
-                "composed_signal": (x3.value + x4.value + x5.value),
+                "composed_signal": sum(xvars[2:]).value,
             },
         )
 

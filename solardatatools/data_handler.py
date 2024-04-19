@@ -8,13 +8,15 @@ This module contains a class for managing a data processing pipeline
 from time import time
 from datetime import timedelta
 from datetime import datetime
+from typing import Callable
 import numpy as np
 import pandas as pd
 import cvxpy as cvx
 from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import traceback, sys
+import traceback
+import sys
 from tqdm import tqdm
 from solardatatools.time_axis_manipulation import (
     make_time_series,
@@ -43,18 +45,17 @@ from solardatatools.algorithms import (
 from pandas.plotting import register_matplotlib_converters
 
 register_matplotlib_converters()
-from solardatatools.polar_transform import PolarTransform
 
 
 class DataHandler:
     def __init__(
         self,
-        data_frame=None,
+        data_frame: pd.DataFrame | None = None,
         raw_data_matrix=None,
         datetime_col=None,
         convert_to_ts=False,
         no_future_dates=True,
-        aggregate=None,
+        aggregate: Callable | None = None,
         how=lambda x: x.mean(),
         gmt_offset=None,
     ):
@@ -670,20 +671,16 @@ time zone errors     {report['time zone correction'] != 0}
         of the clock changes are the same.
         :return:
         """
-        if not self.__fix_dst_ran:
-            df = self.data_frame_raw
-            df_localized = df.tz_localize(
-                "US/Pacific", ambiguous="NaT", nonexistent="NaT"
-            )
-            df_localized = df_localized[df_localized.index == df_localized.index]
-            df_localized = df_localized.tz_convert("Etc/GMT+8")
-            df_localized = df_localized.tz_localize(None)
-            self.data_frame_raw = df_localized
-            self.__fix_dst_ran = True
-            return
-        else:
+        if self.__fix_dst_ran:
             print("DST correction already performed on this data set.")
             return
+        df = self.data_frame_raw
+        df_localized = df.tz_localize("US/Pacific", ambiguous="NaT", nonexistent="NaT")
+        df_localized = df_localized[df_localized.index == df_localized.index]
+        df_localized = df_localized.tz_convert("Etc/GMT+8")
+        df_localized = df_localized.tz_localize(None)
+        self.data_frame_raw = df_localized
+        self.__fix_dst_ran = True
 
     def run_loss_factor_analysis(
         self,
@@ -702,66 +699,68 @@ time zone errors     {report['time zone correction'] != 0}
 
         :return:
         """
-        if self._ran_pipeline:
-            self.loss_analysis = LossFactorAnalysis(
-                self.daily_signals.energy,
-                capacity_change_labels=self.capacity_analysis.labels,
-                outage_flags=~self.daily_flags.no_errors,
-                tau=tau,
-                num_harmonics=num_harmonics,
-                deg_type=deg_type,
-                include_soiling=include_soiling,
-                weight_seasonal=weight_seasonal,
-                weight_soiling_stiffness=weight_soiling_stiffness,
-                weight_soiling_sparsity=weight_soiling_sparsity,
-                weight_deg_nonlinear=weight_deg_nonlinear,
-                deg_rate=deg_rate,
-            )
-            if deg_rate is None:
-                self.loss_analysis.estimate_degradation_rate(verbose=verbose)
-            elif verbose:
-                print("Loading user-provided degradation rate.")
-            if verbose:
-                print("Performing loss factor analysis...")
-            self.loss_analysis.estimate_losses()
-            if verbose:
-                lb = self.loss_analysis.degradation_rate_lb
-                ub = self.loss_analysis.degradation_rate_ub
-                if lb is not None and ub is not None:
-                    print(
-                        f"""
-                    ***************************************
-                    * Solar Data Tools Loss Factor Report *
-                    ***************************************
+        if not self._ran_pipeline:
+            print("Please run the pipeline first.")
+            return
 
-                    degradation rate [%/yr]:                    {self.loss_analysis.degradation_rate:>6.3f}
-                    deg. rate 95% confidence:          [{lb:>6.3f}, {ub:>6.3f}]
-                    total energy loss [kWh]:             {self.loss_analysis.total_energy_loss:>13.1f}
-                    bulk deg. energy loss (gain) [kWh]:  {self.loss_analysis.degradation_energy_loss:>13.1f}
-                    soiling energy loss [kWh]:           {self.loss_analysis.soiling_energy_loss:>13.1f}
-                    capacity change energy loss [kWh]:   {self.loss_analysis.capacity_change_loss:>13.1f}
-                    weather energy loss [kWh]:           {self.loss_analysis.weather_energy_loss:>13.1f}
-                    system outage loss [kWh]:            {self.loss_analysis.outage_energy_loss:>13.1f}
-                    """
-                    )
-                else:
-                    print(
-                        f"""
-                    ***************************************
-                    * Solar Data Tools Loss Factor Report *
-                    ***************************************
+        self.loss_analysis = LossFactorAnalysis(
+            self.daily_signals.energy,
+            capacity_change_labels=self.capacity_analysis.labels,
+            outage_flags=~self.daily_flags.no_errors,
+            tau=tau,
+            num_harmonics=num_harmonics,
+            deg_type=deg_type,
+            include_soiling=include_soiling,
+            weight_seasonal=weight_seasonal,
+            weight_soiling_stiffness=weight_soiling_stiffness,
+            weight_soiling_sparsity=weight_soiling_sparsity,
+            weight_deg_nonlinear=weight_deg_nonlinear,
+            deg_rate=deg_rate,
+        )
+        if deg_rate is None:
+            self.loss_analysis.estimate_degradation_rate(verbose=verbose)
+        elif verbose:
+            print("Loading user-provided degradation rate.")
 
-                    degradation rate [%/yr]:                    {self.loss_analysis.degradation_rate:.3f}
-                    total energy loss [kWh]:             {self.loss_analysis.total_energy_loss:>13.1f}
-                    bulk deg. energy loss (gain) [kWh]:  {self.loss_analysis.degradation_energy_loss:>13.1f}
-                    soiling energy loss [kWh]:           {self.loss_analysis.soiling_energy_loss:>13.1f}
-                    capacity change energy loss [kWh]:   {self.loss_analysis.capacity_change_loss:>13.1f}
-                    weather energy loss [kWh]:           {self.loss_analysis.weather_energy_loss:>13.1f}
-                    system outage loss [kWh]:            {self.loss_analysis.outage_energy_loss:>13.1f}
-                    """
-                    )
-        else:
-            print("Please run pipeline first.")
+        if verbose:
+            print("Performing loss factor analysis...")
+        self.loss_analysis.estimate_losses()
+        if verbose:
+            lb = self.loss_analysis.degradation_rate_lb
+            ub = self.loss_analysis.degradation_rate_ub
+            if lb is not None and ub is not None:
+                print(
+                    f"""
+                ***************************************
+                * Solar Data Tools Loss Factor Report *
+                ***************************************
+
+                degradation rate [%/yr]:                    {self.loss_analysis.degradation_rate:>6.3f}
+                deg. rate 95% confidence:          [{lb:>6.3f}, {ub:>6.3f}]
+                total energy loss [kWh]:             {self.loss_analysis.total_energy_loss:>13.1f}
+                bulk deg. energy loss (gain) [kWh]:  {self.loss_analysis.degradation_energy_loss:>13.1f}
+                soiling energy loss [kWh]:           {self.loss_analysis.soiling_energy_loss:>13.1f}
+                capacity change energy loss [kWh]:   {self.loss_analysis.capacity_change_loss:>13.1f}
+                weather energy loss [kWh]:           {self.loss_analysis.weather_energy_loss:>13.1f}
+                system outage loss [kWh]:            {self.loss_analysis.outage_energy_loss:>13.1f}
+                """
+                )
+            else:
+                print(
+                    f"""
+                ***************************************
+                * Solar Data Tools Loss Factor Report *
+                ***************************************
+
+                degradation rate [%/yr]:                    {self.loss_analysis.degradation_rate:.3f}
+                total energy loss [kWh]:             {self.loss_analysis.total_energy_loss:>13.1f}
+                bulk deg. energy loss (gain) [kWh]:  {self.loss_analysis.degradation_energy_loss:>13.1f}
+                soiling energy loss [kWh]:           {self.loss_analysis.soiling_energy_loss:>13.1f}
+                capacity change energy loss [kWh]:   {self.loss_analysis.capacity_change_loss:>13.1f}
+                weather energy loss [kWh]:           {self.loss_analysis.weather_energy_loss:>13.1f}
+                system outage loss [kWh]:            {self.loss_analysis.outage_energy_loss:>13.1f}
+                """
+                )
 
     def fit_statistical_clear_sky_model(
         self,

@@ -38,7 +38,7 @@ def find_daytime(data_matrix, threshold=0.01):
     return daytime_mask
 
 
-def detect_sun(data, threshold):
+def detect_sun(data, threshold) -> np.ndarray:
     scaled_mat = scale_data(data)
     bool_msk = np.zeros_like(scaled_mat, dtype=bool)
     slct = ~np.isnan(scaled_mat)

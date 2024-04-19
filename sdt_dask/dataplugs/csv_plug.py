@@ -13,17 +13,18 @@ class LocalFiles(DataPlug):
     the source. The main requirement is to keep the ``Dataplug.get_data`` method,
     and make sure the args and returns as defined here.
     """
+
     def __init__(self, path_to_files, ext=".csv"):
         self.path = path_to_files
-        self.ext = ext
+        self.ext = ext.lower()
 
-    def _read_file(self, filename):
+    def _read_file(self, filename: str):
         print(f"Loading file {filename}...")
         file = self.path + filename + self.ext
         if self.ext == ".csv":
             self.df = pd.read_csv(file)
         else:
-            raise "File type not supported."
+            raise ValueError("Only .csv files are supported")
 
     def _clean_data(self):
         # Convert index from int to datetime object

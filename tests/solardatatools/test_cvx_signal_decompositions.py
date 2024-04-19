@@ -50,7 +50,6 @@ import unittest
 from pathlib import Path
 import json
 import numpy as np
-import pandas as pd
 from sklearn.metrics import mean_absolute_error as mae
 
 from solardatatools import _cvx_signal_decompositions as sd
@@ -577,9 +576,9 @@ class TestSignalDecompositions(unittest.TestCase):
         signal = np.array(input["test_signal"])
 
         # Expected output
-        expected_s_hat = output[f"expected_s_hat_mosek_365"]
-        expected_s_seas = output[f"expected_s_seas_mosek_365"]
-        expected_obj_val = output[f"expected_obj_val_mosek_365"]
+        expected_s_hat = output["expected_s_hat_mosek_365"]
+        expected_s_seas = output["expected_s_seas_mosek_365"]
+        expected_obj_val = output["expected_obj_val_mosek_365"]
 
         # Run test with default args
         actual_s_hat, actual_s_seas, _, actual_obj_val = sd._cvx_l1_l1d1_l2d2p365(
@@ -629,9 +628,9 @@ class TestSignalDecompositions(unittest.TestCase):
         indices = input["indices"]
 
         # Expected output
-        expected_s_hat = output[f"expected_s_hat_mosek_ixs"]
-        expected_s_seas = output[f"expected_s_seas_mosek_ixs"]
-        expected_obj_val = output[f"expected_obj_val_mosek_ixs"]
+        expected_s_hat = output["expected_s_hat_mosek_ixs"]
+        expected_s_seas = output["expected_s_seas_mosek_ixs"]
+        expected_obj_val = output["expected_obj_val_mosek_ixs"]
 
         # Run test
         actual_s_hat, actual_s_seas, _, actual_obj_val = sd._cvx_l1_l1d1_l2d2p365(
@@ -689,8 +688,8 @@ class TestSignalDecompositions(unittest.TestCase):
         signal = np.array(input["test_signal"])
 
         # Expected output
-        expected_y_hat = output[f"expected_y_hat_mosek"]
-        expected_obj_val = output[f"expected_obj_val_mosek"]
+        expected_y_hat = output["expected_y_hat_mosek"]
+        expected_obj_val = output["expected_obj_val_mosek"]
 
         # Run test with default args
         actual_y_hat, actual_obj_val = sd._cvx_l2_l1d2_constrained(

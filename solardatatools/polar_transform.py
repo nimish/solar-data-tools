@@ -105,7 +105,7 @@ class PolarTransform:
 
     def plot_transformation(
         self, figsize=(10, 6), ax=None, alpha=1.0, cmap="plasma", cbar=True
-    ):
+    ) -> plt.Figure:
         if ax is None:
             fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(111)

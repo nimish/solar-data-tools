@@ -17,7 +17,7 @@ these two data filtering schemes, the algorithm alerts the user.
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression, HuberRegressor
-from sklearn.model_selection import KFold, TimeSeriesSplit
+from sklearn.model_selection import TimeSeriesSplit
 
 
 def rmse(residuals):

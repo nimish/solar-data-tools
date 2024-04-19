@@ -1,33 +1,38 @@
 name: Tests
 
 on: [push]
+
+env:
+  PYTHON_VERSION: '3.12'
+  AWS_REGION: 'us-west-1'
 jobs:
     run-tests:
         runs-on: ubuntu-latest
-        environment: test
         steps:
           - name: Checkout Repository
-            uses: actions/checkout@v3
+            uses: actions/checkout@v4
+            with:
+              fetch-depth: 1
+              fetch-tags: true
 
 # Necessary action when needing to use AWS credentials.
           - name: Configure AWS Credentials
-            uses: aws-actions/configure-aws-credentials@v1
+            uses: aws-actions/configure-aws-credentials@v4
             with:
               aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
               aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-              aws-region: us-west-1
+              aws-region: ${{ env.AWS_REGION }}
 
           - name: Install Python
-            uses: actions/setup-python@v3
+            uses: actions/setup-python@v5
             with:
-              python-version: '3.10'
+              python-version: ${{ env.PYTHON_VERSION }}
 
           - name: Install Dependencies
             run: |
-              sudo $pythonLocation/bin/python3 -m pip install -r requirements.txt
-              sudo $pythonLocation/bin/python3 -m pip install awscli coverage
-              sudo $pythonLocation/bin/python3 -m pip install setuptools --upgrade
-              $pythonLocation/bin/python3 -m pip list
+              sudo pip install uv
+              uv pip install --system --break-system-packages awscli coverage setuptools
+              uv pip install --system --break-system-packages -r requirements.txt
 
           - name: Setup Mosek License File
             run: |
@@ -38,4 +43,4 @@ jobs:
 
 # Current unit test is not consistent. Occasionally fails despite usually passing. Needs to be fixed.
           - name: Run Unit Tests
-            run: sudo $pythonLocation/bin/python3 -m coverage run -m unittest
+            run: python3 -m coverage run -m unittest

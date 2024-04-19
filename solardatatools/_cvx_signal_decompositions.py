@@ -25,7 +25,6 @@ of Gaussian residuals
     - constrained to have first val at 0 and last val at 1
 
 """
-import sys
 import numpy as np
 
 import cvxpy as cvx
@@ -34,11 +33,11 @@ import cvxpy as cvx
 def _cvx_l2_l1d1_l2d2p365(
     signal,
     use_ixs=None,
-    w0=10, # "hard-coded"
-    w1=50, # optimized
+    w0=10,  # "hard-coded"
+    w1=50,  # optimized
     w2=1e5,
     yearly_periodic=False,
-    return_all=False, 
+    return_all=False,
     solver="MOSEK",
     transition_locs=None,
     verbose=False,
@@ -85,7 +84,7 @@ def _cvx_l2_l1d1_l2d2p365(
         s_seas = cvx.Variable(len(signal))
         s_error = cvx.Variable(len(signal))
 
-        if transition_locs is None: # TODO: this should be two separate sd problems
+        if transition_locs is None:  # TODO: this should be two separate sd problems
             objective = cvx.Minimize(
                 w0 * cvx.sum_squares(s_error)
                 + w1 * cvx.norm1(cvx.multiply(tv_weights, cvx.diff(s_hat, k=1)))
@@ -93,12 +92,12 @@ def _cvx_l2_l1d1_l2d2p365(
             )
         else:
             objective = cvx.Minimize(
-                w0 * cvx.norm(s_error)
-               + w2 * cvx.sum_squares(cvx.diff(s_seas, k=2))
+                w0 * cvx.norm(s_error) + w2 * cvx.sum_squares(cvx.diff(s_seas, k=2))
             )
         # Consistency constraints
         constraints = [
-            signal[index_set] == s_hat[index_set] + s_seas[index_set] + s_error[index_set],
+            signal[index_set]
+            == s_hat[index_set] + s_seas[index_set] + s_error[index_set],
             cvx.sum(s_seas[:365]) == 0,
         ]
         if len(signal) > 365:
@@ -124,13 +123,13 @@ def _cvx_l2_l1d1_l2d2p365(
 def _cvx_tl1_l2d2p365(
     signal,
     use_ixs=None,
-    tau=0.75, # passed as 0.05/0.1 (sunrise), 0.95/0.9 (sunset)
+    tau=0.75,  # passed as 0.05/0.1 (sunrise), 0.95/0.9 (sunset)
     w0=1,
     w1=500,
     yearly_periodic=True,
     return_all=False,
     solver="MOSEK",
-    verbose=False
+    verbose=False,
 ):
     """
     Used in:
@@ -160,8 +159,8 @@ def _cvx_tl1_l2d2p365(
     x = cvx.Variable(len(signal))
     r = signal[use_ixs] - x[use_ixs]
     objective = cvx.Minimize(
-        w0 * cvx.sum(0.5 * cvx.abs(r) + (tau - 0.5) * r) +
-        w1 * cvx.sum_squares(cvx.diff(x, k=2))
+        w0 * cvx.sum(0.5 * cvx.abs(r) + (tau - 0.5) * r)
+        + w1 * cvx.sum_squares(cvx.diff(x, k=2))
     )
     if len(signal) > 365 and yearly_periodic:
         constraints = [x[365:] == x[:-365]]
@@ -180,12 +179,12 @@ def _cvx_l1_l1d1_l2d2p365(
     signal,
     use_ixs=None,
     w0=3,  # l1 term
-    w1=18, # l1d1 term
-    w2=6000, # seasonal term
-    w3=300, # linear term
+    w1=18,  # l1d1 term
+    w2=6000,  # seasonal term
+    w3=300,  # linear term
     return_all=False,
     solver="MOSEK",
-    verbose=False
+    verbose=False,
 ):
     """
     Used in solardatatools/algorithms/capacity_change.py
@@ -229,10 +228,12 @@ def _cvx_l1_l1d1_l2d2p365(
         beta = cvx.Variable()
 
         objective = cvx.Minimize(
-              w0 * cvx.sum(0.5 * cvx.abs(s_error))
+            w0 * cvx.sum(0.5 * cvx.abs(s_error))
             + w1 * cvx.norm1(cvx.multiply(tv_weights, cvx.diff(s_hat, k=1)))
             + w2 * cvx.sum_squares(cvx.diff(s_seas, k=2))
-            + w3 * beta**2 # linear term (degradation) that has a slope of beta over 1 year
+            + w3
+            * beta
+            ** 2  # linear term (degradation) that has a slope of beta over 1 year
         )
 
         constraints = [
@@ -253,11 +254,7 @@ def _cvx_l1_l1d1_l2d2p365(
 
 
 def _cvx_l2_l1d2_constrained(
-        signal,
-        w1=1e1,
-        return_all=False,
-        solver="MOSEK",
-        verbose=False
+    signal, w1=1e1, return_all=False, solver="MOSEK", verbose=False
 ):
     """
     Used in solardatatools/algorithms/clipping.py

@@ -4,6 +4,7 @@ This module contains functions for estimating sunrise and sunset times from an
 unlabel PV power dataset.
 """
 
+from typing import Any
 import numpy as np
 from solardatatools.signal_decompositions import tl1_l2d2p365
 
@@ -27,14 +28,19 @@ def rise_set_rough(bool_msk):
     return {"sunrises": sunrises, "sunsets": sunsets}
 
 
-def rise_set_smoothed(rough_dict, sunrise_tau=0.1, sunset_tau=0.9, solver=None):
+def rise_set_smoothed(
+    rough_dict: dict[str, Any],
+    sunrise_tau=0.1,
+    sunset_tau=0.9,
+    solver: str | None = None,
+):
     sunrises = rough_dict["sunrises"]
     sunsets = rough_dict["sunsets"]
 
     sr_smoothed = tl1_l2d2p365(
-        sunrises, ~np.isnan(sunrises),  w0=1e-2, w1=700, tau=sunrise_tau, solver=solver
+        sunrises, ~np.isnan(sunrises), w0=1e-2, w1=700, tau=sunrise_tau, solver=solver
     )
     ss_smoothed = tl1_l2d2p365(
-        sunsets, ~np.isnan(sunsets),  w0=1e-2, w1=700, tau=sunset_tau, solver=solver
+        sunsets, ~np.isnan(sunsets), w0=1e-2, w1=700, tau=sunset_tau, solver=solver
     )
     return {"sunrises": sr_smoothed, "sunsets": ss_smoothed}

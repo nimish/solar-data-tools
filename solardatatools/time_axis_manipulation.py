@@ -97,7 +97,7 @@ def make_time_series(
 
 def standardize_time_axis(
     df, timeindex=True, power_col=None, datetimekey=None, correct_tz=True, verbose=True
-):
+) -> tuple[pd.DataFrame, int]:
     """
     This function takes in a pandas data frame containing tabular time series
     data, likely generated with a call to pandas.read_csv(). It is assumed that
@@ -218,10 +218,10 @@ def standardize_time_axis(
             if len(leading) == 1:
                 print("\n1 transition detected.\n")
             else:
-                print("{} transitions detected.".format(len(leading)))
+                print(f"{len(leading)} transitions detected.")
             print("Suggest splitting data set between:")
-            for l, t in zip(leading, trailing):
-                print("    ", l, "and", t)
+            for ld, tr in zip(leading, trailing):
+                print(f"     {ld} and {tr}")
             print("\n")
             del df["deltas"]
 
@@ -247,7 +247,9 @@ def standardize_time_axis(
     return df, sn_deviation
 
 
-def fix_daylight_savings_with_known_tz(df, tz="America/Los_Angeles", inplace=False):
+def fix_daylight_savings_with_known_tz(
+    df, tz="America/Los_Angeles", inplace=False
+) -> pd.DataFrame:
     index = (
         df.index.tz_localize(tz, nonexistent="NaT", ambiguous="NaT")
         .tz_convert("Etc/GMT+{}".format(TZ_LOOKUP[tz]))
@@ -255,7 +257,7 @@ def fix_daylight_savings_with_known_tz(df, tz="America/Los_Angeles", inplace=Fal
     )
     if inplace:
         df.index = index
-        return
+        return df
     else:
         df_out = df.copy()
         df_out.index = index

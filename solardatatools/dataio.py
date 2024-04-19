@@ -13,17 +13,20 @@ from solardatatools.time_axis_manipulation import (
 from solardatatools.utilities import progress
 
 from time import time, perf_counter
-from io import StringIO, BytesIO
+from io import StringIO
 import base64
 import os
 import json
 import requests
 import numpy as np
 import pandas as pd
-from typing import Callable, TypedDict, Any, Tuple, Dict
+from typing import Callable, TypedDict, Any, Dict
 from functools import wraps
 from datetime import datetime
 import zlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_pvdaq_data(sysid=2, api_key="DEMO_KEY", year=2011, delim=",", standardize=True):
@@ -50,7 +53,7 @@ def get_pvdaq_data(sysid=2, api_key="DEMO_KEY", year=2011, delim=",", standardiz
         req_url = base_url + "&".join(param_list)
         response = requests.get(req_url)
         if int(response.status_code) != 200:
-            print("\n error: ", response.status_code)
+            logger.error("error: %d", response.status_code)
             return
         df = pd.read_csv(StringIO(response.text), delimiter=delim)
         df_list.append(df)
@@ -60,7 +63,7 @@ def get_pvdaq_data(sysid=2, api_key="DEMO_KEY", year=2011, delim=",", standardiz
     # concatenate the list of yearly data frames
     df = pd.concat(df_list, axis=0, sort=True)
     if standardize:
-        print("\n")
+        logger.info("\n")
         df, _ = standardize_time_axis(df, datetimekey="Date-Time", timeindex=False)
     return df
 
@@ -104,7 +107,7 @@ def load_pvo_data(
         timezone information
     :param id_column: the column name in the metadata file that contains the
         unique system ID information
-    :param verbose: boolean, print information about retreived file
+    :param verbose: boolean, logger.info information about retreived file
     :return: pandas dataframe containing system power data
     """
     meta = pd.read_csv(location + metadata_fn)
@@ -122,7 +125,7 @@ def load_pvo_data(
         tz = meta[tz_column][file_index]
         fix_daylight_savings_with_known_tz(df, tz=tz, inplace=True)
     if verbose:
-        print("index: {}; system ID: {}".format(file_index, id_num))
+        logger.info(f"index: {file_index}; system ID: {id_num}")
     return df
 
 
@@ -145,7 +148,7 @@ def load_cassandra_data(
     try:
         from cassandra.cluster import Cluster
     except ImportError:
-        print(
+        logger.info(
             "Please install cassandra-driver in your Python environment to use this function"
         )
         return
@@ -159,7 +162,7 @@ def load_cassandra_data(
         except FileNotFoundError:
             msg = "Please put text file containing cluster IP address in "
             msg += "~/.aws/cassander_cluster or provide your own IP address"
-            print(msg)
+            logger.info(msg)
             return
     cluster = Cluster([cluster_ip])
     session = cluster.connect("measurements")
@@ -189,7 +192,9 @@ def load_cassandra_data(
     df.replace(-999999.0, np.NaN, inplace=True)
     tf = time()
     if verbose:
-        print("Query of {} rows complete in {:.2f} seconds".format(len(df), tf - ti))
+        logger.info(
+            "Query of {} rows complete in {:.2f} seconds".format(len(df), tf - ti)
+        )
     return df
 
 
@@ -200,27 +205,27 @@ def load_constellation_data(
     index_col=0,
     parse_dates=[0],
     json_file=False,
-):
+) -> tuple[pd.DataFrame, Any]:
     df = pd.read_csv(
         location + data_fn_pattern.format(file_id),
         index_col=index_col,
         parse_dates=parse_dates,
     )
 
-    if json_file:
-        try:
-            from smart_open import smart_open
-        except ImportError:
-            print(
-                "Please install smart_open in your Python environment to use this function"
-            )
-            return df, None
+    if not json_file:
+        return df, None
 
-        for line in smart_open(location + str(file_id) + "_system_details.json", "rb"):
-            file_json = json.loads(line)
-            file_json
-        return df, file_json
-    return df
+    try:
+        from smart_open import smart_open
+    except ImportError:
+        logger.info(
+            "Please install smart_open in your Python environment to use this function"
+        )
+        return df, None
+
+    for line in smart_open(f"{location}{file_id}_system_details.json", "rb"):
+        file_json = json.loads(line)
+    return df, file_json
 
 
 def load_redshift_data(
@@ -252,7 +257,7 @@ def load_redshift_data(
     :type tmax: datetime | None, optional
     :param limit: Maximum number of rows to query, defaults to None
     :type limit: int | None, optional
-    :param verbose: Option to print out additional information, defaults to False
+    :param verbose: Option to logger.info out additional information, defaults to False
     :type verbose: bool, optional
     :return: Pandas DataFrame containing the queried data.
     :rtype: pd.DataFrame
@@ -288,7 +293,9 @@ def load_redshift_data(
                 end_time = perf_counter()
                 execution_time = end_time - start_time
                 if verbose:
-                    print(f"{func.__name__} took {execution_time:.3f} seconds to run")
+                    logger.info(
+                        f"{func.__name__} took {execution_time:.3f} seconds to run"
+                    )
                 return result
 
             return wrapper
@@ -325,16 +332,16 @@ def load_redshift_data(
             url, json=payload, timeout=60 * 5, headers={"Accept-Encoding": "gzip"}
         )
 
-        if response.status_code != 200:
+        try:
+            if verbose:
+                logger.info(f"Content size: {len(response.content)}")
+
+            return response.raise_for_status()
+        except requests.exceptions.HTTPError:
             error = response.json()
             error_msg = error["error"]
-            raise Exception(
-                f"Query failed with status code {response.status_code}: {error_msg}"
-            )
-        if verbose:
-            print(f"Content size: {len(response.content)}")
-
-        return response
+            logger.exception(f"Error response: {error_msg}")
+            raise
 
     @timing(verbose)
     def get_query_info(params: QueryParams) -> requests.Response:
@@ -360,15 +367,16 @@ def load_redshift_data(
 
         response = requests.post(url, json=payload, timeout=60 * 5)
 
-        if response.status_code != 200:
-            error = response.json()
-            print(error)
-            error_msg = error["error"]
-            raise Exception(
-                f"Query failed with status code {response.status_code}: {error_msg}"
-            )
+        try:
+            if verbose:
+                logger.info(f"Content size: {len(response.content)}")
 
-        return response
+            return response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            error = response.json()
+            error_msg = error["error"]
+            logger.exception(f"Error response: {error_msg}")
+            raise
 
     def fetch_data(
         query_params: QueryParams, df_list: list[pd.DataFrame], index: int, page: int
@@ -380,11 +388,11 @@ def load_redshift_data(
             if new_df.empty:
                 raise Exception("Empty dataframe returned from query")
             if verbose:
-                print(f"Page: {page}, Rows: {len(new_df)}")
+                logger.info(f"Page: {page}, Rows: {len(new_df)}")
             df_list[index] = new_df
 
         except Exception as e:
-            print(e)
+            logger.exception(e)
             # raise e
 
     import threading
@@ -403,17 +411,17 @@ def load_redshift_data(
 
     try:
         batch_df: requests.Response = get_query_info(query_params)
-        data = batch_df.json()
-    except Exception as e:
-        print(e)
-        raise Exception("Failed to get query info")
+        data = batch_df.raise_for_status().json()
+    except requests.exceptions.HTTPError as e:
+        logger.exception(e)
+        raise e
     max_limit = int(data["max_limit"])
     total_count = int(data["total_count"])
     batches = int(data["batches"])
     if verbose:
-        print("total number rows for query: ", total_count)
-        print("Max number of rows per API call", max_limit)
-        print("Total number of batches", batches)
+        logger.info("total number rows for query: ", total_count)
+        logger.info("Max number of rows per API call", max_limit)
+        logger.info("Total number of batches", batches)
 
     batch_size = 2  # Max number of threads to run at once (limited by redshift)
 
@@ -453,9 +461,8 @@ def load_redshift_data(
         page += batch_size
 
         # Concatenate the dataframes
-        valid_df_list = [new_df for new_df in df_list if not new_df.empty]
 
-        list_of_dfs.extend(valid_df_list)
+        list_of_dfs.extend(new_df for new_df in df_list if not new_df.empty)
 
     df = pd.concat(list_of_dfs, ignore_index=True)
     # If any batch returns an empty DataFrame, stop querying

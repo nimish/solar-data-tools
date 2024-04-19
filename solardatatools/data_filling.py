@@ -7,8 +7,6 @@ This module contains functions for filling missing data in a PV power matrix
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from solardatatools.daytime import find_daytime
 from solardatatools.algorithms import SunriseSunset
 
 

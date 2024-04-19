@@ -30,7 +30,7 @@ def make_density_scores(
     threshold=0.2,
     return_density_signal=False,
     return_fit=False,
-    solver=None,
+    solver: str | None = None,
 ):
     nans = np.isnan(data_matrix)
     capacity_est = np.quantile(data_matrix[~nans], 0.95)

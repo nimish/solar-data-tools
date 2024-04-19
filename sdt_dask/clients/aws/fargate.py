@@ -1,69 +1,64 @@
-# TODO: Change all documentation to sphinx
-try:
-    # Import checks
-    import os
-    from sdt_dask.clients.clients import Clients
-    from dask_cloudprovider.aws import FargateCluster
-    from dask.distributed import Client
+from sdt_dask.clients.clients import Clients
+from dask_cloudprovider.aws import FargateCluster
+from dask.distributed import Client
+import logging
 
-# Raises exception if modules aren't installed in the environment
-except ModuleNotFoundError as error:
-    packages = "\tos\n\tdask.distributed\n\tdask_cloudprovider"
-    msg = f"{error}\n[!] Check or reinstall the following packages\n{packages}"
-    raise ModuleNotFoundError(msg)
+logger = logging.getLogger(__name__)
 
-finally:
-    class Fargate(Clients):
 
-        def __init__(self,
-                     image: str = "",
-                     tags: dict = {}, # optional
-                     vpc: str = "",
-                     region_name: str = "",
-                     environment: dict = {},
-                     n_workers: int = 10,
-                     threads_per_worker: int = 2
-                     ):
-            self.image = image
-            self.tags = tags
-            self.vpc = vpc
-            self.region_name = region_name
-            self.environment = environment
-            self.n_workers = n_workers
-            self.threads_per_worker = threads_per_worker
-        def _check_versions(self):
-            data = self.client.get_versions(check=True)
-            scheduler_pkgs = data['scheduler']['packages']
-            client_pkgs = data['client']['packages']
+class Fargate(Clients):
+    def __init__(
+        self,
+        image: str = "",
+        tags: dict = {},  # optional
+        vpc: str = "",
+        region_name: str = "",
+        environment: dict = {},
+        n_workers: int = 10,
+        threads_per_worker: int = 2,
+    ):
+        self.image = image
+        self.tags = tags
+        self.vpc = vpc
+        self.region_name = region_name
+        self.environment = environment
+        self.n_workers = n_workers
+        self.threads_per_worker = threads_per_worker
 
-            for (c_pkg, c_ver), (s_pkg, s_ver) in zip(scheduler_pkgs.items(), client_pkgs.items()):
-                if c_ver != s_ver:
-                    msg = 'Please Update the client version to match the Scheduler version'
-                    raise EnvironmentError(f"{c_pkg} version Mismatch:\n\tScheduler: {s_ver} vs Client: {c_ver}\n{msg}")
+    def _check_versions(self):
+        data = self.client.get_versions(check=True)
+        scheduler_pkgs = data["scheduler"]["packages"]
+        client_pkgs = data["client"]["packages"]
 
-        def init_client(self) -> tuple:
-            try:
-                print("[i] Initilializing Fargate Cluster ...")
-
-                cluster = FargateCluster(
-                    tags = self.tags,
-                    image = self.image,
-                    vpc = self.vpc,
-                    region_name = self.region_name,
-                    environment = self.environment,
-                    n_workers = self.n_workers,
-                    worker_nthreads = self.threads_per_worker
+        for (c_pkg, c_ver), (s_pkg, s_ver) in zip(
+            scheduler_pkgs.items(), client_pkgs.items()
+        ):
+            if c_ver != s_ver:
+                msg = "Please Update the client version to match the Scheduler version"
+                raise EnvironmentError(
+                    f"{c_pkg} version Mismatch:\n\tScheduler: {s_ver} vs Client: {c_ver}\n{msg}"
                 )
 
-                print("[i] Initialized Fargate Cluster")
-                print("[i] Initilializing Dask Client ...")
+    def init_client(self) -> tuple:
+        logger.info("[i] Initilializing Fargate Cluster ...")
 
-                self.client = Client(cluster)
+        cluster = FargateCluster(
+            tags=self.tags,
+            image=self.image,
+            vpc=self.vpc,
+            region_name=self.region_name,
+            environment=self.environment,
+            n_workers=self.n_workers,
+            worker_nthreads=self.threads_per_worker,
+        )
 
-                self._check_versions()
+        logger.info("[i] Initialized Fargate Cluster")
+        logger.info("[i] Initilializing Dask Client ...")
 
-                print(f"[>] Dask Dashboard: {self.client.dashboard_link}")
+        self.client = Client(cluster)
 
-                return self.client
-            except Exception as e:
-                raise Exception(e)
+        self._check_versions()
+
+        logger.info(f"[>] Dask Dashboard: {self.client.dashboard_link}")
+
+        return self.client
