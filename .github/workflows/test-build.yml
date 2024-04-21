@@ -8,18 +8,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
+        uses: actions/checkout@v4
         with:
-          python-version: "3.10"
+          fetch-depth: 1
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install Twine
         run: sudo pip install twine
 
       - name: Create the distribution
         run: |
-          git fetch --prune --unshallow --tags
           sudo python setup.py sdist bdist_wheel
 
   build-conda:
@@ -28,18 +30,20 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    environment: test-deployment
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
+        uses: actions/checkout@v4
         with:
-          python-version: "3.10"
+          fetch-depth: 1
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       # Much better than manual installation, original version Miniconda2-4.7.10-Linux-x86_64.sh is broken
       - name: Install Miniconda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: true
           activate-environment: ""
@@ -63,5 +67,6 @@ jobs:
         run: |
           conda install anaconda-client
           conda config --set anaconda_upload no --set solver libmamba
-          VERSION_FROM_GIT_TAG=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-)test conda build . -c mosek -c anaconda -c pvlib -c slacgismo -c conda-forge --numpy 1.22.0
-          echo "gitversion=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-)" >> $GITHUB_OUTPUT
+          tag_ver=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-)
+          VERSION_FROM_GIT_TAG="${tag_ver}test" conda build . -c mosek -c anaconda -c pvlib -c slacgismo -c conda-forge --numpy 1.22.0
+          echo "gitversion=${tag_ver}" >> $GITHUB_OUTPUT

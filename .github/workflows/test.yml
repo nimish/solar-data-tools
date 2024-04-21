@@ -5,6 +5,7 @@ on: [push]
 env:
   PYTHON_VERSION: '3.12'
   AWS_REGION: 'us-west-1'
+  MOSEK_LICENSE: 's3://slac.gismo.ci.artifacts/mosek.license/mosek.lic'
 jobs:
     run-tests:
         runs-on: ubuntu-latest
@@ -15,14 +16,6 @@ jobs:
               fetch-depth: 1
               fetch-tags: true
 
-# Necessary action when needing to use AWS credentials.
-          - name: Configure AWS Credentials
-            uses: aws-actions/configure-aws-credentials@v4
-            with:
-              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-              aws-region: ${{ env.AWS_REGION }}
-
           - name: Install Python
             uses: actions/setup-python@v5
             with:
@@ -31,16 +24,25 @@ jobs:
           - name: Install Dependencies
             run: |
               sudo pip install uv
-              uv pip install --system --break-system-packages awscli coverage setuptools
               uv pip install --system --break-system-packages -r requirements.txt
+
+          - name: Configure AWS Credentials
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws-region: ${{ env.AWS_REGION }}
 
           - name: Setup Mosek License File
             run: |
               sudo mkdir /root/mosek
               mkdir $HOME/mosek
-              aws s3 cp s3://slac.gismo.ci.artifacts/mosek.license/mosek.lic $HOME/mosek/mosek.lic
+              aws s3 cp ${{env.MOSEK_LICENSE}} $HOME/mosek/mosek.lic
               sudo cp $HOME/mosek/mosek.lic /root/mosek/mosek.lic
 
 # Current unit test is not consistent. Occasionally fails despite usually passing. Needs to be fixed.
           - name: Run Unit Tests
-            run: python3 -m coverage run -m unittest
+            env:
+              pytest_github_report: true
+              pytest_verbosity: 2
+            run: pytest -v --cov=src --cov-report=xml --cov-report=term-missing --color=y tests/

@@ -23,3 +23,8 @@ tqdm
 spcqe
 dask
 graphviz
+pytest
+pytest-cov
+pytest-github-actions-annotate-failures
+pytest-github-report
+pytest-md-report

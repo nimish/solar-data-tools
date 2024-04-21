@@ -6,13 +6,14 @@ import paramiko
 from smart_open import smart_open
 import numpy as np
 import pandas as pd
+from solardatatools.data_handler import DataHandler
 from solardatatools.utilities import progress
 from pvsystemprofiler.longitude_study import LongitudeStudy
 from pvsystemprofiler.latitude_study import LatitudeStudy
 from pvsystemprofiler.tilt_azimuth_study import TiltAzimuthStudy
 
 
-def get_address(tag_name, region, client):
+def get_address(tag_name: str, region: str, client) -> list[str]:
     """
     Collects the addresses of the aws instances being used for the estimation
     :param tag_name: aws 'Name' tag of the instances
@@ -33,7 +34,9 @@ def get_address(tag_name, region, client):
     return ec2_instances
 
 
-def remote_execute(user, instance_id, key, shell_commands, verbose=True):
+def remote_execute(
+    user: str, instance_id: str, key: str, shell_commands: str, verbose=True
+) -> dict[str, list[str]]:
     """
     Executes a list of bash commands remotely on Amazon Web Services (AWS) instances from another computer.
     :param user: AWS instance user name, i.e. `ubuntu`.
@@ -56,13 +59,13 @@ def remote_execute(user, instance_id, key, shell_commands, verbose=True):
     for command in shell_commands:
         if verbose:
             print("running command: {}".format(command))
-        stdin, stdout, stderr = c.exec_command(command)
+        _, stdout, stderr = c.exec_command(command)
         command_dict[command] = [stdout.read(), stderr.read()]
     c.close()
     return command_dict
 
 
-def copy_to_s3(input_file_name, input_file_location):
+def copy_to_s3(input_file_name: str, input_file_location: str):
     """
     Copies a local file to a Amazon Web Services (AWS) s3 bucket.
     :param input_file_name: name of the file to be copied to the AWS s3 bucket.
@@ -71,12 +74,12 @@ def copy_to_s3(input_file_name, input_file_location):
     bucket, prefix = get_s3_bucket_and_prefix(input_file_location)
     destination_file_name = prefix + "/generated_site_list.csv"
 
-    content = open(input_file_name, "rb")
-    s3 = boto3.client("s3")
-    s3.put_object(Bucket=bucket, Key=destination_file_name, Body=content)
+    with open(input_file_name, "rb") as content:
+        s3 = boto3.client("s3")
+        s3.put_object(Bucket=bucket, Key=destination_file_name, Body=content)
 
 
-def get_s3_bucket_and_prefix(s3_location):
+def get_s3_bucket_and_prefix(s3_location: str) -> tuple[str, str]:
     """
     Splits absolute s3 location into parameters used to copy and execute commands remotely.
     :param s3_location: full path to s3 bucket location.
@@ -92,8 +95,13 @@ def get_s3_bucket_and_prefix(s3_location):
 
 
 def load_generic_data(
-    location, file_label, file_id, extension=".csv", parse_dates=[0], nrows=None
-):
+    location: str,
+    file_label: str | None,
+    file_id: str,
+    extension=".csv",
+    parse_dates=[0],
+    nrows: int | None = None,
+) -> pd.DataFrame:
     """
     Loads csv file containing input signals for a given site.
     :param location: String. absolute path to csv file containing input signals.
@@ -116,7 +124,7 @@ def load_generic_data(
     return df
 
 
-def get_checked_sites(df):
+def get_checked_sites(df: pd.DataFrame | None) -> list[str]:
     """
     Returns list of sites that have already been analyzed
     :param df: pandas dataframe containing results from reports or parameter study.
@@ -130,7 +138,7 @@ def get_checked_sites(df):
     return checked_sites
 
 
-def resume_run(results_file):
+def resume_run(results_file) -> pd.DataFrame | None:
     """
     Loads the output dataFrame from an incomplete run provided the results csv file name
     :param results_file: full path to csv file containing partial results.
@@ -145,7 +153,9 @@ def resume_run(results_file):
     return df
 
 
-def enumerate_files(s3_location, extension=".csv", file_size_list=False):
+def enumerate_files(
+    s3_location: str, extension=".csv", file_size_list=False
+) -> list[str] | tuple[list[str], list[int]]:
     """
     Returns a list with the file names with a given extension located in a AWS s3 bucket.
     :param s3_location: String. Full path to s3 bucket from which a list of files is to be generated.
@@ -171,7 +181,7 @@ def enumerate_files(s3_location, extension=".csv", file_size_list=False):
         return output_list
 
 
-def create_system_dict(df):
+def create_system_dict(df: pd.DataFrame) -> tuple[list[str], dict[str, list[str]]]:
     """
     Reads a pandas dataFrame and creates a dictionary where the keys are the site ids and the values are a the list of
     systems for each site.
@@ -186,7 +196,7 @@ def create_system_dict(df):
     return site_list, ss_dict
 
 
-def create_json_dict(json_list, location):
+def create_json_dict(json_list: list[str], location: str) -> dict[str, str]:
     """
     returns a dictionary containing the system ids given a location containing json files with site information.
     :param json_list: list of json files containing site information.
@@ -205,8 +215,8 @@ def create_json_dict(json_list, location):
 
 
 def log_file_versions(
-    utility,
-    active_conda_env=None,
+    utility: str,
+    active_conda_env: str | None = None,
     output_folder_location="./",
     conda_location="/home/ubuntu/miniconda3/",
     repository_location="/home/ubuntu/github/",
@@ -248,7 +258,7 @@ def log_file_versions(
                 i = line.find(":")
                 location = line[i + 1 :]
                 output_string += "utility version:" + " " + location + "\n"
-    except:
+    except Exception:
         pip_list = ""
         output_string += "utility version:" + " " + "n/a" + "\n"
     try:
@@ -277,7 +287,7 @@ def log_file_versions(
                 i = line.find(" ")
                 date = line[i:]
                 output_string += "date:" + " " + date + "\n"
-    except:
+    except Exception:
         output_string += "commit id:" + " " + "n/a" + "\n"
         output_string += "author:" + " " + "n/a" + "\n"
         output_string += "date:" + " " + "n/a" + "\n"
@@ -285,10 +295,11 @@ def log_file_versions(
     output_file = open(output_folder_location + utility + "_" + "versions.log", "w")
     output_file.write(output_string)
     output_file.close()
-    return
 
 
-def create_system_list(file_label, signal_label, s3_location):
+def create_system_list(
+    file_label: str, signal_label: str, s3_location: str
+) -> pd.DataFrame:
     """
     returns a list of systems present in a `s3_bucket`.
     :param file_label: String. Repeating part of label of files containing input data. For the site list
@@ -298,7 +309,7 @@ def create_system_list(file_label, signal_label, s3_location):
     :return: List containing ids for systems in s3_location.
     """
     bucket, prefix = get_s3_bucket_and_prefix(s3_location)
-    file_list = enumerate_files(bucket, prefix)
+    file_list: list[str] = enumerate_files(bucket, prefix)
     ll = len(signal_label)
     system_list = pd.DataFrame(columns=["site", "system"])
 
@@ -317,7 +328,7 @@ def create_system_list(file_label, signal_label, s3_location):
     return system_list
 
 
-def extract_sys_parameters(file_name, system, location):
+def extract_sys_parameters(location: str, file_name: str, system: str) -> list:
     """
     Retrieves a list with zip code, inverter id, longitude, latitude, tilt and azimuth for a given system from
     a json file containing site information.
@@ -358,9 +369,10 @@ def extract_sys_parameters(file_name, system, location):
         # file_id = file_json['System']['system_id']
         # parameters.append(file_id)
         return parameters
+    return [np.nan] * 5
 
 
-def siteid_to_filename(sites, file_label, ext="csv"):
+def siteid_to_filename(sites: list[str], file_label: str, ext="csv") -> list[str]:
     """
     Given a list of site ids returns a list of strings corresponding to the file name obtained by concatenating it to
     the 'file_label` string.  For `sites` in ['1', '2'] with `file_label`='_signal', this method will return the list
@@ -377,7 +389,7 @@ def siteid_to_filename(sites, file_label, ext="csv"):
     return checked_sites
 
 
-def filename_to_siteid(sites):
+def filename_to_siteid(sites: list[str]) -> list[str]:
     """
     Given a list of file names containing input signals returns a list of strings with the site ids only. For the list
     of file ids `sites` in ['1_signal.csv', '2_signal.csv'] with `file_label`='_signal', this method will return a list
@@ -394,7 +406,9 @@ def filename_to_siteid(sites):
     return site_list
 
 
-def run_failsafe_pipeline(dh, sys_tag, fts, tzc):
+def run_failsafe_pipeline(
+    dh: DataHandler, sys_tag: str, fts: bool, tzc: bool
+) -> tuple[DataHandler, bool]:
     """
     Runs the solarDataTools dataHandler pipeline in failsafe mode.
     :param dh: input data handler
@@ -418,12 +432,12 @@ def run_failsafe_pipeline(dh, sys_tag, fts, tzc):
                 verbose=False,
                 max_val=max_val * 3,
             )
-    except:
+    except Exception:
         return dh, False
     return dh, True
 
 
-def get_commandline_inputs(input_kwargs):
+def get_commandline_inputs(input_kwargs: list[str]) -> dict[str, str | bool | None]:
     """
     :param estimation: Estimation to be performed. Options are 'report', 'longitude', 'latitude', 'tilt_azimuth'.
     :param input_site_file:  csv file containing list of sites to be evaluated. 'None' if no input file is provided.
@@ -446,6 +460,8 @@ def get_commandline_inputs(input_kwargs):
     gmt offsets needs to be provided.
     :param data_source: String. Input signal data source. Options are 's3' and 'cassandra'.
     """
+    if len(input_kwargs) < 15:
+        raise ValueError("Not enough input arguments")
     inputs_dict = {
         "estimation": input_kwargs[1],
         "input_site_file": input_kwargs[2] if input_kwargs[2] != "None" else None,
@@ -465,7 +481,7 @@ def get_commandline_inputs(input_kwargs):
     return inputs_dict
 
 
-def load_system_metadata(df_in, file_label):
+def load_system_metadata(df_in: str, file_label: str | None) -> pd.DataFrame:
     df = pd.read_csv(df_in, index_col=0)
     df = df[~df["time_shift_manual"].isnull()]
     df["time_shift_manual"] = df["time_shift_manual"].apply(int)
@@ -477,9 +493,13 @@ def load_system_metadata(df_in, file_label):
     return df
 
 
-def generate_list(inputs_dict, full_df, df_system_metadata):
+def generate_list(
+    inputs_dict: dict[str, str | bool | None],
+    full_df: pd.DataFrame,
+    df_system_metadata: pd.DataFrame,
+) -> tuple[list[str], dict[str, list[str]]]:
     if inputs_dict["s3_location"] is not None:
-        full_site_list = enumerate_files(inputs_dict["s3_location"])
+        full_site_list = enumerate_files(str(inputs_dict["s3_location"]))
         full_site_list = filename_to_siteid(full_site_list)
     else:
         full_site_list = []
@@ -490,7 +510,7 @@ def generate_list(inputs_dict, full_df, df_system_metadata):
     if inputs_dict["check_json"]:
         json_files = enumerate_files(inputs_dict["s3_location"], extension=".json")
         print("Generating system list from json files")
-        json_file_dict = create_json_dict(json_files, inputs_dict["s3_location"])
+        json_file_dict = create_json_dict(json_files, str(inputs_dict["s3_location"]))
         print("List generation completed")
     else:
         json_file_dict = None
@@ -511,7 +531,9 @@ def generate_list(inputs_dict, full_df, df_system_metadata):
     return file_list, json_file_dict
 
 
-def run_failsafe_lon_estimation(dh_in, real_longitude, gmt_offset):
+def run_failsafe_lon_estimation(
+    dh_in: DataHandler, real_longitude: float, gmt_offset: str
+) -> tuple[pd.DataFrame, bool]:
     try:
         runs_lon_estimation = True
         lon_study = LongitudeStudy(
@@ -519,7 +541,7 @@ def run_failsafe_lon_estimation(dh_in, real_longitude, gmt_offset):
         )
         lon_study.run(verbose=False)
         p_df = lon_study.results.sort_index().copy()
-    except:
+    except Exception:
         runs_lon_estimation = False
         p_df = pd.DataFrame(
             columns=[
@@ -538,13 +560,15 @@ def run_failsafe_lon_estimation(dh_in, real_longitude, gmt_offset):
     return p_df, runs_lon_estimation
 
 
-def run_failsafe_lat_estimation(dh_in, real_latitude):
+def run_failsafe_lat_estimation(
+    dh_in: DataHandler, real_latitude: float
+) -> tuple[pd.DataFrame, bool]:
     try:
         runs_lat_estimation = True
         lat_study = LatitudeStudy(data_handler=dh_in, lat_true_value=real_latitude)
         lat_study.run()
         p_df = lat_study.results.sort_index().copy()
-    except:
+    except Exception:
         runs_lat_estimation = False
         p_df = pd.DataFrame(
             columns=[
@@ -562,18 +586,18 @@ def run_failsafe_lat_estimation(dh_in, real_latitude):
 
 
 def run_failsafe_ta_estimation(
-    dh,
-    nrandom,
-    threshold,
-    lon,
-    lat,
-    tilt,
-    azim,
-    real_lat,
-    real_tilt,
-    real_azim,
-    gmt_offset,
-):
+    dh: DataHandler,
+    nrandom: int,
+    threshold: float,
+    lon: float,
+    lat: float,
+    tilt: float,
+    azim: float,
+    real_lat: float,
+    real_tilt: float,
+    real_azim: float,
+    gmt_offset: str,
+) -> tuple[pd.DataFrame, bool]:
     try:
         runs_ta_estimation = True
         ta_study = TiltAzimuthStudy(
@@ -591,7 +615,7 @@ def run_failsafe_ta_estimation(
         )
         ta_study.run()
         p_df = ta_study.results.sort_index().copy()
-    except:
+    except Exception:
         runs_ta_estimation = False
         cols = [
             "day range",

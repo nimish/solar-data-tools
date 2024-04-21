@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-""" Matrix Embedding Module
+"""Matrix Embedding Module
 
 This module contains functions for embedding PV power time series data into
 a matrix
@@ -58,7 +57,7 @@ def make_2d(
     # Trim leading or trailing missing days, which can occur when data frame
     # contains data from multiple sources or sensors that have missing
     # values at different times.
-    empty_days = np.alltrue(np.isnan(D), axis=0)
+    empty_days = np.all(np.isnan(D), axis=0)
     i, j = find_start_end(empty_days)
     D = D[:, i:j]
     day_axis = pd.date_range(start=start, end=end, freq="1D")
