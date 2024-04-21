@@ -21,10 +21,10 @@ jobs:
             with:
               python-version: ${{ env.PYTHON_VERSION }}
 
-          - name: Install Dependencies
-            run: |
-              sudo pip install uv
-              uv pip install --system --break-system-packages -r requirements.txt
+          - name: Install Cached UV
+            uses: hynek/setup-cached-uv@v1
+            run: uv pip install --system --break-system-packages -r requirements.txt
+
 
           - name: Configure AWS Credentials
             uses: aws-actions/configure-aws-credentials@v4
@@ -40,7 +40,6 @@ jobs:
               aws s3 cp ${{env.MOSEK_LICENSE}} $HOME/mosek/mosek.lic
               sudo cp $HOME/mosek/mosek.lic /root/mosek/mosek.lic
 
-# Current unit test is not consistent. Occasionally fails despite usually passing. Needs to be fixed.
           - name: Run Unit Tests
             env:
               pytest_github_report: true

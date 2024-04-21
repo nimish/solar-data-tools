@@ -40,8 +40,6 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    env:
-      NUMPY_VERSION: "1.22.0"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -75,6 +73,8 @@ jobs:
       # channels need to be specified on build and are saved in the package for installs
       - name: Build the Anaconda Package
         id: condabuild
+        env:
+          NUMPY_VERSION: "1.22.0"
         run: |
           conda install anaconda-client
           conda config --set anaconda_upload no --set solver libmamba
@@ -92,4 +92,4 @@ jobs:
       - name: Upload the Anaconda Package
         id: condaload
         run: |
-          anaconda upload -u slacgismo  /usr/share/miniconda3/conda-bld/noarch/solar-data-tools-${{ steps.condabuild.outputs.gitversion }}-*.tar.bz2
+          anaconda upload -u slacgismo /usr/share/miniconda3/conda-bld/noarch/solar-data-tools-${{ steps.condabuild.outputs.gitversion }}-*.tar.bz2
