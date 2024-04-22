@@ -1,4 +1,4 @@
-""" Signal Decompositions Module for OSD
+"""Signal Decompositions Module for OSD
 
 This module contains standardized signal decomposition models for use in the
 SDT algorithms using the OSD modeling language. The defined signal decompositions are:
@@ -130,8 +130,8 @@ def _osd_tl1_l2d2p365(
     signal,
     use_ixs=None,
     tau=0.75,
-    w0=1,
-    w1=500,
+    w0=1.0,
+    w1=500.0,
     yearly_periodic=True,
     return_all=False,
     solver="OSQP",

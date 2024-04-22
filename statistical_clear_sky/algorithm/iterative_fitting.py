@@ -4,9 +4,11 @@ This module defines "Statistical Clear Sky Fitting" algorithm.
 
 from time import time
 import numpy as np
+import numpy.typing as npt
 from numpy.linalg import norm
 import cvxpy as cvx
 from collections import defaultdict
+from solardatatools.data_handler import DataHandler
 from statistical_clear_sky.algorithm.initialization.singular_value_decomposition import (
     SingularValueDecomposition,
 )
@@ -37,8 +39,8 @@ class IterativeFitting(SerializationMixin, PlotMixin):
 
     def __init__(
         self,
-        data_matrix=None,
-        data_handler_obj=None,
+        data_matrix: npt.NDArray[np.float64] | None = None,
+        data_handler_obj: DataHandler | None = None,
         rank_k=6,
         solver_type="MOSEK",
         reserve_test_data=False,
@@ -100,7 +102,6 @@ class IterativeFitting(SerializationMixin, PlotMixin):
         verbose=True,
         bootstraps=None,
     ):
-
         mu_l, mu_r, tau = self._obtain_hyper_parameters(mu_l, mu_r, tau)
         l_cs_value, r_cs_value, beta_value = self._obtain_initial_values()
         weights = self._obtain_weights(verbose=verbose)
@@ -783,7 +784,7 @@ class IterativeFitting(SerializationMixin, PlotMixin):
             # term_f4 = (mu_r * norm(
             #             r_cs_value[1:, :-365] - r_cs_value[1:, 365:], 'fro'))
             term_f4 = (
-                (mu_r * cvx.norm(r_cs_value[1:, :-365] - r_cs_value[1:, 365:], "fro"))
+                mu_r * cvx.norm(r_cs_value[1:, :-365] - r_cs_value[1:, 365:], "fro")
             ).value
         components = [term_f1, term_f2, term_f3, term_f4]
         objective = sum(components)

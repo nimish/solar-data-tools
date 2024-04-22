@@ -1,4 +1,4 @@
-""" PVPRO Post Processing Module
+"""PVPRO Post Processing Module
 
 This module contains a class that takes in the output dataframe of PVPRO and
 contains methods to process the dataset, perform signal decompositions to model
@@ -715,7 +715,6 @@ class PVPROPostProcessor:
                 pass
 
         else:
-            data = self.df_ds[label]
             components = self.descaled_data[label + "_" + model]
 
             titles = [
@@ -733,21 +732,21 @@ class PVPROPostProcessor:
             for col, values in components.items():
                 plt.subplot(611 + counter)
                 if col == "x1" or col == "x2":
-                    plt.scatter(self.df_ds.index, components[col])
+                    plt.scatter(self.df_ds.index, values)
                 elif col == "composed_signal":
                     plt.scatter(self.df_ds.index, self.df_ds[label], c="orange")
-                    plt.plot(self.df_ds.index, components[col])
+                    plt.plot(self.df_ds.index, values)
                     plt.xlabel("Time")
                 elif col == "x3":
-                    plt.plot(self.df_ds.index, components[col])
+                    plt.plot(self.df_ds.index, values)
                     plt.ylim(
                         (
-                            components[col][0] - 0.1 * components[col][0],
-                            components[col][0] + 0.1 * components[col][0],
+                            values[0] - 0.1 * values[0],
+                            values[0] + 0.1 * values[0],
                         )
                     )
                 else:
-                    plt.plot(self.df_ds.index, components[col])
+                    plt.plot(self.df_ds.index, values)
 
                 plt.title(titles[counter])
                 plt.xticks(rotation=45)
@@ -786,7 +785,6 @@ class PVPROPostProcessor:
         """
 
         ti = time()
-        period = self.period
         lambda_2 = lambda2
         lambda_4_values = np.atleast_1d(lambda4)
         lambda_5_values = np.atleast_1d(lambda5)

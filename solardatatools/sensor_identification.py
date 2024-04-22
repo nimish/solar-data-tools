@@ -1,4 +1,4 @@
-""" Sensor Identification Module
+"""Sensor Identification Module
 
 This module contains a class for choosing which irradiance sensor best
 describes a PV power or current data set. We assume a linear model between
@@ -16,8 +16,14 @@ these two data filtering schemes, the algorithm alerts the user.
 
 import numpy as np
 import pandas as pd
+import sklearn
+import sklearn.exceptions
 from sklearn.linear_model import LinearRegression, HuberRegressor
 from sklearn.model_selection import TimeSeriesSplit
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def rmse(residuals):
@@ -36,7 +42,7 @@ class SensorIdentification:
         self.data_handler = data_handler_obj
         self.sensor_keys = np.array(list(self.data_handler.extra_matrices.keys()))
         if len(self.sensor_keys) == 0:
-            print("Please add sensor columns to DataHandler pipeline.")
+            logger.error("Please add sensor columns to DataHandler pipeline.")
             return
         self.coverage_scores = self.data_handler.extra_quality_scores
         nan_masks = [~np.isnan(m[1]) for m in self.data_handler.extra_matrices.items()]
@@ -96,7 +102,8 @@ class SensorIdentification:
                         y_pred = fit.predict(data[test_ix])
                         # Calculate the residuals
                         residuals.append(y[test_ix] - y_pred)
-                    except:
+                    except sklearn.exceptions.NotFittedError:
+                        logger.exception("Model did not fit.")
                         residuals.append(np.inf)
                 # Collect the residuals from all the splits
                 residuals = np.concatenate(residuals)
@@ -121,4 +128,3 @@ class SensorIdentification:
             sensors = self.sensor_keys[ixs]
             self.chosen_sensor = dict(zip(lowest_error.index, sensors))
             self.consistent_answer = False
-        return

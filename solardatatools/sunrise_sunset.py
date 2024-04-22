@@ -1,15 +1,17 @@
-""" Sunrise and Sunset Estimation Module
+"""Sunrise and Sunset Estimation Module
 
 This module contains functions for estimating sunrise and sunset times from an
 unlabel PV power dataset.
 """
 
-from typing import Any
 import numpy as np
+import numpy.typing as npt
 from solardatatools.signal_decompositions import tl1_l2d2p365
 
 
-def rise_set_rough(bool_msk):
+def rise_set_rough(
+    bool_msk: npt.NDArray[np.bool_],
+) -> dict[str, npt.NDArray[np.float64]]:
     nvals = bool_msk.shape[0]
     num_meas_per_hour = nvals / 24
     hour_of_day = np.arange(0, 24, 1.0 / num_meas_per_hour)
@@ -21,19 +23,15 @@ def rise_set_rough(bool_msk):
     sunsets[sunset_idxs != nvals - 1] = hour_of_day[sunset_idxs][
         sunset_idxs != nvals - 1
     ]
-    # sunrises[np.isnan(sunrises)] = 1000
-    # sunrises[sunrises > 12] = np.nan
-    # sunsets[np.isnan(sunsets)] = -1000
-    # sunsets[sunsets < 12] = np.nan
     return {"sunrises": sunrises, "sunsets": sunsets}
 
 
 def rise_set_smoothed(
-    rough_dict: dict[str, Any],
+    rough_dict: dict[str, npt.NDArray[np.float64]],
     sunrise_tau=0.1,
     sunset_tau=0.9,
-    solver: str | None = None,
-):
+    solver: str = "OSQP",
+) -> dict[str, npt.NDArray[np.float64]]:
     sunrises = rough_dict["sunrises"]
     sunsets = rough_dict["sunsets"]
 

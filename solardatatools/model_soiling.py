@@ -29,9 +29,8 @@ def simulate_PV_time_series(
     smooth_rates=False,
     random_seed=False,
 ):
-
     if random_seed:  # Have seed for repeatability
-        if not type(np.random.seed) == int:
+        if not isinstance(random_seed, int):
             np.random.seed(int(random_seed))
 
     # Initialize time series and data frame
@@ -131,7 +130,7 @@ def simulate_PV_time_series_seasonal_soiling(
     cleaning_events = np.random.choice(
         df["day"].values,
         nr_of_cleaning_events,
-        replace="False",
+        replace=False,
         p=cleaning_probability.values,
     )
     cleaning_events = np.sort(cleaning_events)

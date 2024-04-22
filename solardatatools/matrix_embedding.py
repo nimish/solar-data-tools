@@ -24,7 +24,11 @@ def find_start_end(arr):
 
 
 def make_2d(
-    df, key="dc_power", trim_start=False, trim_end=False, return_day_axis=False
+    df: pd.DataFrame | None,
+    key="dc_power",
+    trim_start=False,
+    trim_end=False,
+    return_day_axis=False,
 ) -> np.ndarray | tuple[np.ndarray, pd.DatetimeIndex] | None:
     """
     This function constructs a 2D array (or matrix) from a time series signal with a standardized time axis. The data is

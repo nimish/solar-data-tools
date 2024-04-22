@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-""" Data Transforms Module
+"""Data Transforms Module
 
 This module contains functions for transforming PV power data, including time-axis standardization and
 2D-array generation
@@ -25,7 +24,7 @@ TZ_LOOKUP = {
 
 
 def make_time_series(
-    df,
+    df: pd.DataFrame,
     return_keys=True,
     localize_time=-8,
     timestamp_key="ts",
@@ -33,7 +32,7 @@ def make_time_series(
     name_key="meas_name",
     groupby_keys=["site", "sensor"],
     filter_length=200,
-):
+) -> pd.DataFrame:
     """
     Accepts a Pandas data frame extracted from a relational or Cassandra database.
     These queries often result in data with repeated timestamps, as you might
@@ -96,7 +95,12 @@ def make_time_series(
 
 
 def standardize_time_axis(
-    df, timeindex=True, power_col=None, datetimekey=None, correct_tz=True, verbose=True
+    df: pd.DataFrame,
+    timeindex=True,
+    power_col=None,
+    datetimekey=None,
+    correct_tz=True,
+    verbose=True,
 ) -> tuple[pd.DataFrame, int]:
     """
     This function takes in a pandas data frame containing tabular time series
@@ -248,7 +252,7 @@ def standardize_time_axis(
 
 
 def fix_daylight_savings_with_known_tz(
-    df, tz="America/Los_Angeles", inplace=False
+    df: pd.DataFrame, tz="America/Los_Angeles", inplace=False
 ) -> pd.DataFrame:
     index = (
         df.index.tz_localize(tz, nonexistent="NaT", ambiguous="NaT")

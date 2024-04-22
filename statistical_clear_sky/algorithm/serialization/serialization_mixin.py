@@ -1,16 +1,20 @@
 """
 This module defines Mixin for serialization.
 """
+
 import json
 import numpy as np
+from .state_data import StateData
 
 
-class SerializationMixin(object):
+class SerializationMixin:
     """
     Mixin for IterativeClearSky, taking care of serialization.
     """
 
-    def save_instance(self, filepath):
+    _state_data: StateData
+
+    def save_instance(self, filepath: str):
         save_dict = dict(
             auto_fix_time_shifts=self._state_data.auto_fix_time_shifts,
             power_signals_d=self._state_data.power_signals_d.tolist(),
@@ -23,7 +27,7 @@ class SerializationMixin(object):
             component_r0=self._state_data.component_r0.tolist(),
             mu_l=self._state_data.mu_l,
             mu_r=self._state_data.mu_r,
-            tau=self._state_data._tau,
+            tau=self._state_data.tau,
             is_solver_error=self._state_data.is_solver_error,
             is_problem_status_error=self._state_data.is_problem_status_error,
             f1_increase=self._state_data.f1_increase,
@@ -37,8 +41,8 @@ class SerializationMixin(object):
             json.dump(save_dict, file)
 
     @classmethod
-    def load_instance(cls, filepath):
-        with open(filepath, "r") as file:
+    def load_instance(cls, filepath: str) -> "SerializationMixin":
+        with open(filepath) as file:
             load_dict = json.load(file)
 
         power_signals_d = np.array(load_dict["power_signals_d"])

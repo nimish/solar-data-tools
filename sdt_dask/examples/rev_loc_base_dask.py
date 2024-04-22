@@ -36,6 +36,7 @@ Example:
 OR
     python rev_loc_base_dask.py -l info -w 1 -t 1 -m 5
 """
+
 import glob
 import os
 import sys
@@ -105,6 +106,7 @@ log_file = (
     f"../results/rev_loc_{options.workers}w-" f"{options.threads}t-{time_stamp}.log"
 )
 
+
 # Function for the logger handler and formatter for this file
 # formats the loggers as well, formatter doesn't support color logs
 def _init_logger(level):
@@ -135,7 +137,7 @@ __logger__.debug("arguments: %s", vars(options))
 
 WORKERS = int(options.workers)
 THREADS_PER_WORKER = int(options.threads)
-MEMORY = float(options.memory)
+MEMORY = int(options.memory)
 VERBOSE = bool(options.verbose)
 
 #  TODO: Change the path

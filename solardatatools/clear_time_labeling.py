@@ -1,22 +1,23 @@
-# -*- coding: utf-8 -*-
-""" Clear Time Labeling Module
+"""Clear Time Labeling Module
 
 This module contains a function to find time periods in a data matrix
 that correspond to clear sky output..
 
 """
+
 import numpy as np
 from solardatatools.utilities import find_runs
+import numpy.typing as npt
 
 
 def find_clear_times(
-    measured_matrix,
-    clear_matrix,
-    capacity_estimate,
+    measured_matrix: npt.NDArray[np.float64],
+    clear_matrix: npt.NDArray[np.float64],
+    capacity_estimate: float,
     th_relative_power=0.1,
     th_relative_smoothness=0.05,
     min_length=3,
-):
+) -> npt.NDArray[np.bool_]:
     n1, n2 = measured_matrix.shape
     # calculate clearness index based on clear sky power estimates
     ci = np.zeros_like(clear_matrix)

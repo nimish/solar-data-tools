@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-""" Solar Noon Module
+"""Solar Noon Module
 
 This module contains functions for estimating solar noon on each day in a
 PV power or irradiance data set. All functions assume that the data has been
@@ -12,11 +11,13 @@ tends to give a better estimate of solar noon than the sunrise/sunset approach.
 """
 
 import numpy as np
+import numpy.typing as npt
+
 from solardatatools.daytime import detect_sun
 from solardatatools.sunrise_sunset import rise_set_rough
 
 
-def energy_com(data):
+def energy_com(data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Calculate the energy center of mass for each day, and use this quantity
     as an estimate for solar noon.
 
@@ -39,7 +40,9 @@ def energy_com(data):
     return com
 
 
-def avg_sunrise_sunset(data_in, threshold=0.01):
+def avg_sunrise_sunset(
+    data_in: npt.NDArray[np.float64], threshold=0.01
+) -> npt.NDArray[np.float64]:
     """Calculate the sunrise time and sunset time for each day, and use the
     average of these two values as an estimate for solar noon.
 

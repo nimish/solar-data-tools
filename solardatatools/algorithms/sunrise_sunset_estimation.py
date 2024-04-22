@@ -1,4 +1,4 @@
-""" Sunrise Sunset Estimation Algorithm Module
+"""Sunrise Sunset Estimation Algorithm Module
 
 This module contains an algorithm for robust estimation of sunrise and sunset
 times from measured power data. This algorithm utilizes the following prior
@@ -21,41 +21,40 @@ Bennet Meyers, 7/2/20
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from solardatatools.data_handler import DataHandler
 from solardatatools.daytime import detect_sun
 from solardatatools.sunrise_sunset import rise_set_rough, rise_set_smoothed
 from solardatatools.signal_decompositions import tl1_l2d2p365
+import numpy.typing as npt
 
 
 class SunriseSunset:
-    def __init__(self):
-        self.sunrise_estimates = None
-        self.sunset_estimates = None
-        self.sunrise_measurements = None
-        self.sunset_measurements = None
-        self.sunup_mask_measured = None
-        self.sunup_mask_estimated = None
-        self.threshold = None
-        self.total_rmse = None
-        self.true_times = None
-        self.sunrise_tau = 0.1
-        self.sunset_tau = 0.9
+    sunrise_estimates: npt.NDArray[np.float64]
+    sunset_estimates: npt.NDArray[np.float64]
+    sunrise_measurements: npt.NDArray[np.float64]
+    sunset_measurements: npt.NDArray[np.float64]
+    sunup_mask_measured: npt.NDArray[np.bool_]
+    sunup_mask_estimated: npt.NDArray[np.bool_]
+    threshold: float
+    total_rmse: float
+    true_times: pd.DataFrame | None
+    sunrise_tau: float = 0.1
+    sunset_tau: float = 0.9
 
     def calculate_times(
         self,
-        data,
-        threshold=None,
+        data: npt.NDArray[np.float64],
+        threshold: float | None = None,
         plot=False,
         figsize=(12, 10),
         zoom_fit=False,
         solver="OSQP",
     ):
         # print('Calculating times')
+        threshold = threshold or self.threshold
         if threshold is None:
-            if self.threshold is not None:
-                threshold = self.threshold
-            else:
-                print("Please run optimizer or provide a threshold")
-                return
+            raise ValueError("Please provide a threshold value")
+
         if self.true_times is not None:
             sr_true = self.true_times["sunrise times"].values
             ss_true = self.true_times["sunset times"].values
@@ -65,7 +64,10 @@ class SunriseSunset:
         bool_msk = detect_sun(data, threshold)
         measured = rise_set_rough(bool_msk)
         smoothed = rise_set_smoothed(
-            measured, sunrise_tau=self.sunrise_tau, sunset_tau=self.sunset_tau, solver=solver
+            measured,
+            sunrise_tau=self.sunrise_tau,
+            sunset_tau=self.sunset_tau,
+            solver=solver,
         )
         self.sunrise_estimates = smoothed["sunrises"]
         self.sunset_estimates = smoothed["sunsets"]
@@ -171,7 +173,7 @@ class SunriseSunset:
         else:
             return
 
-    def calculate_true(self, dh, lat, lon, tz_offset):
+    def calculate_true(self, dh: DataHandler, lat, lon, tz_offset):
         outtab = sunrise_sunset_times(
             lat, lon, dh.day_index.dayofyear.values, tz_offset
         )
@@ -262,7 +264,10 @@ class SunriseSunset:
                 ho_error.append(np.average(run_ho_errors))
                 if self.true_times is not None:
                     full_fit = rise_set_smoothed(
-                        measured, sunrise_tau=self.sunrise_tau, sunset_tau=self.sunset_tau, solver=solver
+                        measured,
+                        sunrise_tau=self.sunrise_tau,
+                        sunset_tau=self.sunset_tau,
+                        solver=solver,
                     )
                     sr_full = full_fit["sunrises"]
                     ss_full = full_fit["sunsets"]
@@ -279,7 +284,12 @@ class SunriseSunset:
         selected_th = np.min(ths[slct_vals])
         bool_msk = detect_sun(data, selected_th)
         measured = rise_set_rough(bool_msk)
-        smoothed = rise_set_smoothed(measured, sunrise_tau=self.sunrise_tau, sunset_tau=self.sunset_tau, solver=solver)
+        smoothed = rise_set_smoothed(
+            measured,
+            sunrise_tau=self.sunrise_tau,
+            sunset_tau=self.sunset_tau,
+            solver=solver,
+        )
         self.sunrise_estimates = smoothed["sunrises"]
         self.sunset_estimates = smoothed["sunsets"]
         self.sunrise_measurements = measured["sunrises"]

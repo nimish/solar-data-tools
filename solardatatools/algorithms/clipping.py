@@ -1,4 +1,4 @@
-""" Clipping Module
+"""Clipping Module
 
 This module is for analyzing clipping in power data
 
@@ -9,37 +9,36 @@ import cvxpy as cvx
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from solardatatools.signal_decompositions import l2_l1d2_constrained
+import numpy.typing as npt
+from matplotlib.figure import Figure
 
 
 class ClippingDetection:
-    def __init__(self):
-        # these are the attributes most users will be interested in
-        self.inverter_clipping = None  # T/F any clipping?
-        self.clipping_mask = None  # Boolean mask of clipped entries
-        self.num_clip_points = None  # How many clipping set points
-        # these are data and intermediate calculations used by the class methods
-        self.data = None
-        self.num_clip_points = None
-        self.num_days = None
-        self.num_rows = None
-        self.max_value = None
-        self.daily_max_val = None
-        self.clip_stat_1 = None
-        self.clip_stat_2 = None
-        self.clipped_days = None
-        self.threshold = None
-        self.cdf_x = None
-        self.cdf_y = None
-        self.y_hat = None
-        self.y_param = None
-        self.weight = None
-        self.metric = None
-        self.point_masses = None
-        self.point_mass_locations = None
+    inverter_clipping: bool
+    clipping_mask: npt.NDArray[np.bool_]
+    num_clip_points: int
+    data: npt.NDArray[np.float64]
+    num_clip_points: int
+    num_days: int
+    num_rows: int
+    max_value: np.float64
+    daily_max_val: npt.NDArray[np.float64]
+    clip_stat_1: npt.NDArray[np.float64]
+    clip_stat_2: npt.NDArray[np.float64]
+    clipped_days: npt.NDArray[np.bool_]
+    threshold: float
+    cdf_x: npt.NDArray[np.float64]
+    cdf_y: npt.NDArray[np.float64]
+    y_hat: npt.NDArray[np.float64]
+    y_param: npt.NDArray[np.float64]
+    weight: npt.NDArray[np.float64]
+    metric: npt.NDArray[np.float64]
+    point_masses: npt.NDArray[np.bool_]
+    point_mass_locations: npt.NDArray[np.float64]
 
     def check_clipping(
         self,
-        data_matrix,
+        data_matrix: npt.NDArray[np.float64],
         no_error_flag=None,
         threshold=-0.35,
         solver=None,
@@ -144,7 +143,10 @@ class ClippingDetection:
         y_hat = self.y_hat
         # Look for outliers in the 2nd order difference to identify point masses from clipping
         local_curv = cvx.diff(y_hat, k=2).value
-        ref_slope = cvx.diff(y_hat, k=1).value[:-1]
+        assert local_curv is not None
+        ref_slope = cvx.diff(y_hat, k=1).value
+        assert ref_slope is not None
+        ref_slope = ref_slope[:-1]
         # metric = local_curv / ref_slope
         metric = np.min(
             [
@@ -197,7 +199,7 @@ class ClippingDetection:
         self.point_masses = point_masses
         self.point_mass_locations = point_mass_values
 
-    def plot_cdf(self, figsize=(8, 6)):
+    def plot_cdf(self, figsize=(8, 6)) -> Figure:
         x_rs = self.cdf_x
         y_rs = self.cdf_y
         y_hat = self.y_hat
@@ -223,7 +225,7 @@ class ClippingDetection:
             )
         return fig
 
-    def plot_pdf(self, figsize=(8, 6)):
+    def plot_pdf(self, figsize=(8, 6)) -> Figure:
         data = self.clip_stat_1
         x_rs = self.cdf_x
         y_hat = self.y_hat
@@ -254,7 +256,7 @@ class ClippingDetection:
                 plt.axvline(val, linewidth=1, linestyle=":", color="green")
         return fig
 
-    def plot_diffs(self, figsize=(8, 6)):
+    def plot_diffs(self, figsize=(8, 6)) -> Figure:
         x_rs = self.cdf_x
         metric = self.metric
         threshold = self.threshold
@@ -263,6 +265,7 @@ class ClippingDetection:
         point_mass_values = self.point_mass_locations
         fig, ax = plt.subplots(nrows=2, sharex=True, figsize=figsize)
         y1 = cvx.diff(y_hat, k=1).value
+        assert y1 is not None
         y2 = metric
         ax[0].plot(x_rs[:-1], y1)
         ax[1].plot(x_rs[1:-1], y2)
@@ -290,7 +293,7 @@ class ClippingDetection:
         plt.tight_layout()
         return fig
 
-    def plot_both(self, figsize=(8, 6)):
+    def plot_both(self, figsize=(8, 6)) -> Figure:
         data = self.clip_stat_1
         x_rs = self.cdf_x
         y_rs = self.cdf_y
@@ -357,7 +360,9 @@ class ClippingDetection:
         ax2.legend(loc=(0.15, 0.02))  # -0.4
         return fig
 
-    def calculate_cdf(self, data):
+    def calculate_cdf(
+        self, data
+    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         # Calculate empirical CDF
         x = np.sort(np.copy(data))
         x = x[x > 0]
@@ -369,7 +374,7 @@ class ClippingDetection:
         y_rs = f(x_rs)
         return x_rs, y_rs
 
-    def get_l2_l1d2(self, y, weight=5, solver=None):
+    def get_l2_l1d2(self, y, weight=5, solver="OSQP"):
         out = l2_l1d2_constrained(y, w1=weight, solver=solver)
 
         self.y_param = out[0]

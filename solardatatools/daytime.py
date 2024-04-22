@@ -1,4 +1,4 @@
-""" Daytime Module
+"""Daytime Module
 
 This module contains a function for finding the daytime period of a power time
 series
@@ -6,9 +6,12 @@ series
 """
 
 import numpy as np
+import numpy.typing as npt
 
 
-def find_daytime(data_matrix, threshold=0.01):
+def find_daytime(
+    data_matrix: npt.NDArray[np.float64], threshold: float = 0.01
+) -> npt.NDArray[np.bool_]:
     """
     Function for creating a boolean mask of time periods when the sun is
     up on a PV system, based on a a power signal. The data is scaled so that
@@ -38,16 +41,20 @@ def find_daytime(data_matrix, threshold=0.01):
     return daytime_mask
 
 
-def detect_sun(data, threshold) -> np.ndarray:
+def detect_sun(
+    data: npt.NDArray[np.float64], threshold: float
+) -> npt.NDArray[np.bool_]:
     scaled_mat = scale_data(data)
+    assert not isinstance(scaled_mat, tuple)
     bool_msk = np.zeros_like(scaled_mat, dtype=bool)
     slct = ~np.isnan(scaled_mat)
     bool_msk[slct] = scaled_mat[slct] > threshold
     return bool_msk
 
 
-def scale_data(data, return_metrics=False):
-
+def scale_data(
+    data: npt.NDArray[np.float64], return_metrics=False
+) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], float, float, float]:
     high_val = np.nanquantile(data, 0.99)
     low_val = max(np.nanmin(data), -0.005 * high_val)
     scaled_mat = (data - low_val) / high_val

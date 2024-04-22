@@ -44,6 +44,10 @@ from solardatatools.algorithms import (
 )
 from pandas.plotting import register_matplotlib_converters
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 register_matplotlib_converters()
 
 
@@ -79,9 +83,9 @@ class DataHandler:
                     df[datetime_col] = pd.to_datetime(df[datetime_col])
                     df.set_index(datetime_col, inplace=True)
                 else:
-                    e = "Data frame must have a DatetimeIndex or"
-                    e += "the user must set the datetime_col kwarg."
-                    raise Exception(e)
+                    raise ValueError(
+                        "Data frame must have a DatetimeIndex or the user must set the datetime_col kwarg."
+                    )
             self.tz_info = get_index_timezone(self.data_frame_raw)
             self.data_frame_raw = remove_index_timezone(self.data_frame_raw)
             if no_future_dates:
@@ -226,12 +230,10 @@ class DataHandler:
                 x = cvx.Variable()
                 prob = cvx.Problem(cvx.Minimize(cvx.sum_squares(x)))
                 prob.solve(solver="MOSEK")
-            except Exception as e:
-                print("VALID MOSEK LICENSE NOT AVAILABLE")
-                print(
-                    "please check that your license file is in [HOME]/mosek and is current\n"
+            except cvx.SolverError:
+                logger.exception(
+                    "please check that your MOSEK license file is in [HOME]/mosek and is current"
                 )
-                print("error msg:", e)
                 return
         if reset:
             self._initialize_attributes()
@@ -308,9 +310,7 @@ class DataHandler:
         except:
             msg = "Sunrise/sunset detection failed."
             self._error_msg += "\n" + msg
-            if verbose:
-                print(msg)
-                traceback.print_exception(*sys.exc_info())
+            logger.exception(msg)
         self.daytime_analysis = ss
         ######################################################################
         # Cleaning
@@ -323,9 +323,8 @@ class DataHandler:
         except:
             msg = "Matrix filling failed."
             self._error_msg += "\n" + msg
-            if verbose:
-                print(msg)
-                traceback.print_exception(*sys.exc_info())
+            logger.exception(msg)
+            return
         num_raw_measurements = np.count_nonzero(
             np.nan_to_num(self.raw_data_matrix, copy=True, nan=0.0)[
                 self.boolean_masks.daytime
@@ -341,8 +340,7 @@ class DataHandler:
         else:
             msg = "Error: data set contains no non-zero values!"
             self._error_msg += "\n" + msg
-            if verbose:
-                print(msg)
+            logger.error(msg)
             self.daily_scores = None
             self.daily_flags = None
             self.data_quality_score = 0.0
@@ -354,9 +352,8 @@ class DataHandler:
             msg += "This typically occurs when\nthe time stamps are in the "
             msg += "wrong timezone. Please double check your data table.\n"
             self._error_msg += "\n" + msg
-            if verbose:
-                print(msg)
-                print(f"ratio of filled to raw nonzero measurements was {ratio:.2f}")
+            logger.error(msg)
+            logger.info(f"ratio of filled to raw nonzero measurements was {ratio:.2f}")
             self.daily_scores = None
             self.daily_flags = None
             self.data_quality_score = None

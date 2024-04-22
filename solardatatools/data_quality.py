@@ -1,23 +1,23 @@
-# -*- coding: utf-8 -*-
-""" Data Quality Checking Module
+"""Data Quality Checking Module
 
 This module contains functions for identifying corrupt or bad quality data.
 
 """
 
 import numpy as np
+import numpy.typing as npt
 from scipy.stats import mode
 from solardatatools.signal_decompositions import tl1_l2d2p365
 
 
 def make_quality_flags(
-    density_scores,
-    linearity_scores,
+    density_scores: npt.NDArray[np.float64],
+    linearity_scores: npt.NDArray[np.float64],
     density_lower_threshold=0.6,
     density_upper_threshold=1.05,
     linearity_threshold=0.1,
-):
-    density_flags = np.logical_and(
+) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.bool_]]:
+    density_flags: npt.NDArray[np.bool_] = np.logical_and(
         density_scores > density_lower_threshold,
         density_scores < density_upper_threshold,
     )
@@ -26,11 +26,15 @@ def make_quality_flags(
 
 
 def make_density_scores(
-    data_matrix,
+    data_matrix: npt.NDArray[np.float64],
     threshold=0.2,
     return_density_signal=False,
     return_fit=False,
-    solver: str | None = None,
+    solver: str = "OSQP",
+) -> (
+    npt.NDArray[np.float64]
+    | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]
 ):
     nans = np.isnan(data_matrix)
     capacity_est = np.quantile(data_matrix[~nans], 0.95)
@@ -53,7 +57,9 @@ def make_density_scores(
     return out
 
 
-def make_linearity_scores(data_matrix, capacity, density_baseline):
+def make_linearity_scores(
+    data_matrix: npt.NDArray[np.float64], capacity: float, density_baseline: float
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     temp_mat = np.copy(data_matrix)
     temp_mat[temp_mat < 0.005 * capacity] = np.nan
     difference_mat = np.round(temp_mat[1:] - temp_mat[:-1], 4)
@@ -83,7 +89,9 @@ def make_linearity_scores(data_matrix, capacity, density_baseline):
     return linearity_scores, infill_mask
 
 
-def daily_missing_data_simple(data_matrix, threshold=0.2, return_density_signal=False):
+def daily_missing_data_simple(
+    data_matrix: npt.NDArray[np.float64], threshold=0.2, return_density_signal=False
+) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     This function takes a PV power data matrix and returns a boolean array,
     identifying good days. The good days are the ones that are not missing a
@@ -111,8 +119,11 @@ def daily_missing_data_simple(data_matrix, threshold=0.2, return_density_signal=
 
 
 def dataset_quality_score(
-    data_matrix, threshold=0.2, good_days=None, use_advanced=True
-):
+    data_matrix: npt.NDArray[np.float64],
+    threshold=0.2,
+    good_days=None,
+    use_advanced=True,
+) -> float | npt.ArrayLike:
     """
     This function scores a complete data set. The score is the fraction of days
     in the data set that pass the missing data test. A score of 1 means all the

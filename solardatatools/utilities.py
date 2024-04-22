@@ -1,4 +1,4 @@
-""" Utilities Module
+"""Utilities Module
 
 This module contains utility functions used by other modules.
 
@@ -6,10 +6,13 @@ This module contains utility functions used by other modules.
 
 import sys
 import numpy as np
+import numpy.typing as npt
 from scipy.interpolate import interp1d
 
 
-def basic_outlier_filter(x, outlier_constant=1.5):
+def basic_outlier_filter(
+    x: npt.NDArray[np.float64], outlier_constant: float = 1.5
+) -> npt.NDArray[np.bool_]:
     """
     Applies an outlier filter based on the interquartile range definition:
         any data point more than 1.5 interquartile ranges (IQRs) below the
@@ -31,7 +34,7 @@ def basic_outlier_filter(x, outlier_constant=1.5):
     return mask
 
 
-def progress(count, total, status="", bar_length=60):
+def progress(count: int, total: int, status: str = "", bar_length: int = 60):
     """
     Python command line progress bar in less than 10 lines of code. · GitHub
     https://gist.github.com/vladignatyev/06860ec2040cb497f0f3
@@ -46,11 +49,13 @@ def progress(count, total, status="", bar_length=60):
     percents = round(100.0 * count / float(total), 1)
     bar = "=" * filled_len + "-" * (bar_len - filled_len)
 
-    sys.stdout.write("[%s] %s%s ...%s\r" % (bar, percents, "%", status))
+    sys.stdout.write("[{}] {}{} ...{}\r".format(bar, percents, "%", status))
     sys.stdout.flush()
 
 
-def find_runs(x):
+def find_runs(
+    x: npt.NDArray[np.float64],
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
     """Find runs of consecutive items in an array.
     https://gist.github.com/alimanfoo/c5977e87111abe8127453b21204c1065"""
 
@@ -80,7 +85,12 @@ def find_runs(x):
         return run_values, run_starts, run_lengths
 
 
-def time_dilate(data, mask, power=8, scale=None):
+def time_dilate(
+    data: npt.NDArray[np.float64],
+    mask: npt.NDArray[np.bool_],
+    power: int,
+    scale: float | None = None,
+) -> npt.NDArray[np.float64]:
     """Process an entire PV power matrix at once
     :return:
     """
@@ -102,7 +112,11 @@ def time_dilate(data, mask, power=8, scale=None):
     return output
 
 
-def undo_time_dilate(data, mask, scale=None):
+def undo_time_dilate(
+    data: npt.NDArray[np.float64],
+    mask: npt.NDArray[np.int_],
+    scale: float | None = None,
+) -> npt.NDArray[np.float64]:
     if scale is None:
         scale = 1
     output = np.zeros_like(mask, dtype=float)

@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-""" Plotting Module
-
-
-
-"""
+"""Plotting Module"""
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+
 import seaborn as sns
 
 
@@ -19,7 +16,7 @@ def plot_2d(
     year_lines=False,
     ax=None,
     color="red",
-) -> plt.Figure | None:
+) -> Figure | None:
     """
     A function for plotting the power heat map for solar power data
 

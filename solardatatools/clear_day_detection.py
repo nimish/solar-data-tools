@@ -1,26 +1,26 @@
-# -*- coding: utf-8 -*-
 """Clear Day Detection Module
 
 This module contains functions for detecting clear days in historical PV solar data sets.
 
 """
 
+from matplotlib.figure import Figure
 import numpy as np
 from solardatatools.signal_decompositions import tl1_l2d2p365
 from solardatatools.utilities import basic_outlier_filter
+import numpy.typing as npt
 
 
 class ClearDayDetection:
-    def __init__(self):
-        self.y = None
-        self.tc = None
-        self.de = None
-        self.x = None
-        self.density_signal = None
-        self.filtered_signal = None
-        self.weights = None
+    y: npt.NDArray[np.float64]
+    tc: npt.NDArray[np.float64]
+    de: npt.NDArray[np.float64]
+    x: npt.NDArray[np.float64]
+    density_signal: npt.NDArray[np.float64]
+    filtered_signal: npt.NDArray[np.float64]
+    weights: npt.NDArray[np.float64]
 
-    def filter_for_sparsity(self, data, w1=6e3, solver="OSQP"):
+    def filter_for_sparsity(self, data: npt.NDArray[np.float64], w1=6e3, solver="OSQP"):
         capacity_est = np.nanquantile(data, 0.95)
         # set nans to zero to avoid issues w/ summing
         data_copy = np.copy(data)
@@ -39,12 +39,12 @@ class ClearDayDetection:
 
     def find_clear_days(
         self,
-        data,
+        data: npt.NDArray[np.float64],
         smoothness_threshold=0.9,
         energy_threshold=0.8,
         boolean_out=True,
         solver="OSQP",
-    ):
+    ) -> npt.NDArray[np.bool_] | npt.NDArray[np.float64]:
         """
         This function quickly finds clear days in a PV power data set. The input to this function is a 2D array containing
         standardized time series power data. This will typically be the output from
@@ -106,7 +106,7 @@ class ClearDayDetection:
         else:
             return self.weights
 
-    def plot_analysis(self, figsize=None):
+    def plot_analysis(self, figsize=None) -> Figure | None:
         if self.tc is not None and self.de is not None:
             tc = self.tc
             de = self.de

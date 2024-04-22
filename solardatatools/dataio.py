@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
-""" Data IO Module
+"""Data IO Module
 
 This module contains functions for obtaining data from various sources.
 
 """
+
+from collections.abc import Iterable
 import math
 from warnings import warn
 from solardatatools.time_axis_manipulation import (
@@ -29,19 +30,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_pvdaq_data(sysid=2, api_key="DEMO_KEY", year=2011, delim=",", standardize=True):
+def get_pvdaq_data(
+    sysid=2,
+    api_key="DEMO_KEY",
+    year: int | Iterable[int] = 2011,
+    delim=",",
+    standardize=True,
+):
     """
     This fuction queries one or more years of raw PV system data from NREL's PVDAQ data service:
             https://maps.nrel.gov/pvdaq/
     """
     # Force year to be a list of integers
     ti = time()
-    try:
-        year = int(year)
-    except TypeError:
-        year = [int(yr) for yr in year]
-    else:
+    if isinstance(year, int):
         year = [year]
+    elif isinstance(year, Iterable):
+        year = [int(yr) for yr in year]
+
     # Each year must queries separately, so iterate over the years and generate a list of dataframes.
     df_list = []
     it = 0
@@ -171,9 +177,7 @@ def load_cassandra_data(
         from measurement_raw
         where site = '{}'
             and meas_name = '{}'
-    """.format(
-        siteid, column
-    )
+    """.format(siteid, column)
     ts_constraint = np.logical_or(tmin is not None, tmax is not None)
     if tmin is not None:
         cql += "and ts > '{}'\n".format(tmin)
@@ -185,7 +189,7 @@ def load_cassandra_data(
         cql += "and ts > '2000-01-01'\n"
         cql += "and sensor = '{}'\n".format(sensor)
     if limit is not None:
-        cql += "limit {}".format(np.int(limit))
+        cql += "limit {}".format(np.int64(limit))
     cql += ";"
     rows = session.execute(cql)
     df = pd.DataFrame(list(rows))
@@ -336,7 +340,8 @@ def load_redshift_data(
             if verbose:
                 logger.info(f"Content size: {len(response.content)}")
 
-            return response.raise_for_status()
+            response.raise_for_status()
+            return response
         except requests.exceptions.HTTPError:
             error = response.json()
             error_msg = error["error"]
@@ -371,7 +376,8 @@ def load_redshift_data(
             if verbose:
                 logger.info(f"Content size: {len(response.content)}")
 
-            return response.raise_for_status()
+            response.raise_for_status()
+            return response
         except requests.exceptions.HTTPError:
             error = response.json()
             error_msg = error["error"]
@@ -397,7 +403,7 @@ def load_redshift_data(
 
     import threading
 
-    data: Dict[str, Any] = {}
+    data: Dict[str, str] = {}
 
     query_params: QueryParams = {
         "api_key": api_key,
@@ -411,7 +417,8 @@ def load_redshift_data(
 
     try:
         batch_df: requests.Response = get_query_info(query_params)
-        data = batch_df.raise_for_status().json()
+        batch_df.raise_for_status()
+        data = batch_df.json()
     except requests.exceptions.HTTPError as e:
         logger.exception(e)
         raise e

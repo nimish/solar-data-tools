@@ -1,4 +1,4 @@
-""" Polar Transform Module
+"""Polar Transform Module
 
 This module contains a class for tranforming a power signal into azimuth-
 elevation space, which requires system latitude and longitude to calculate.
@@ -10,12 +10,13 @@ import pandas as pd
 from pvlib.solarposition import get_solarposition
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 class PolarTransform:
     def __init__(
         self,
-        series,
+        series: pd.Series,
         latitude,
         longitude,
         tz_offset=-8,
@@ -66,7 +67,7 @@ class PolarTransform:
         # stamps, but we typically have non-TZ-aware local time, without DST
         # shifts (which is the most natural for solar data). So, step 1 is to
         # convert the time to UTC.
-        times = self.data.index.shift(-self.tz_offset, "H")
+        times: pd.DatetimeIndex = self.data.index.shift(-self.tz_offset, "H")
         # run solar position subroutine
         solpos = get_solarposition(times, self.lat, self.lon)
         # reset the time from UTC to local
@@ -105,7 +106,7 @@ class PolarTransform:
 
     def plot_transformation(
         self, figsize=(10, 6), ax=None, alpha=1.0, cmap="plasma", cbar=True
-    ) -> plt.Figure:
+    ) -> Figure:
         if ax is None:
             fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(111)

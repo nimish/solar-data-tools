@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Signal Decompositions Module
 
@@ -39,9 +38,12 @@ from solardatatools._cvx_signal_decompositions import (
     _cvx_l2_l1d2_constrained,
 )
 
+import numpy as np
+import numpy.typing as npt
+
 
 def l2_l1d1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
     w0=10,
     w1=50,
@@ -52,7 +54,7 @@ def l2_l1d1_l2d2p365(
     sum_card=False,  # OSD only
     transition_locs=None,  # CVX only
     verbose=False,
-):
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in: solardatatools/algorithms/time_shifts.py
 
@@ -125,16 +127,16 @@ def l2_l1d1_l2d2p365(
 
 
 def tl1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
     tau=0.75,
-    w0=1,
-    w1=500,
+    w0=1.0,
+    w1=500.0,
     yearly_periodic=True,
     return_all=False,
     solver="OSQP",
     verbose=False,
-):
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in:
         solardatatools/algorithms/sunrise_sunset_estimation.py
@@ -191,7 +193,7 @@ def tl1_l2d2p365(
 
 
 def l1_l1d1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
     w0=2e-6,  # l1 term, scaled
     w1=40e-6,  # l1d1 term, scaled
@@ -200,7 +202,7 @@ def l1_l1d1_l2d2p365(
     solver=None,
     sum_card=False,  # OSD only
     verbose=False,
-):
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in solardatatools/algorithms/capacity_change.py
 
@@ -249,8 +251,13 @@ def l1_l1d1_l2d2p365(
 
 
 def l2_l1d2_constrained(
-    signal, w0=1, w1=5, return_all=False, solver="OSQP", verbose=False
-):
+    signal: npt.NDArray[np.float64],
+    w0=1,
+    w1=5,
+    return_all=False,
+    solver="OSQP",
+    verbose=False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in solardatatools/algorithms/clipping.py
 

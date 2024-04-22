@@ -4,11 +4,19 @@ This module defines common functionality of minimization problem solution
 Since there is common code for minimization of both L matrix and R matrix,
 the common code is placed in the abstract base class.
 """
+
 from abc import abstractmethod
+import numpy.typing as npt
+import numpy as np
 import cvxpy as cvx
 
 
 class AbstractMinimization:
+    _problem: cvx.Problem
+    right_matrix: cvx.Expression
+    left_matrix: cvx.Expression
+    beta: cvx.Expression
+    r0: cvx.Expression
     """
     Abstract class for minimization that uses the same equation but
     the subclasses fix either L (left) matrix value or R (right) matrix
@@ -17,10 +25,10 @@ class AbstractMinimization:
 
     def __init__(
         self,
-        power_signals_d,
-        rank_k,
-        weights,
-        tau,
+        power_signals_d: npt.NDArray[np.float64],
+        rank_k: int,
+        weights: npt.NDArray[np.float64],
+        tau: float,
         non_neg_constraints=True,
         solver_type="ECOS",
     ):
@@ -30,13 +38,15 @@ class AbstractMinimization:
         self._tau = tau
         self._non_neg_constraints = non_neg_constraints
         self._solver_type = solver_type
-        self._problem = None
-        self.left_matrix = None
-        self.right_matrix = None
-        self.beta = None
-        self.r0 = None
 
-    def minimize(self, l_cs_value, r_cs_value, beta_value, component_r0, tol=1e-8):
+    def minimize(
+        self,
+        l_cs_value: npt.NDArray[np.float64],
+        r_cs_value: npt.NDArray[np.float64],
+        beta_value: npt.NDArray[np.float64],
+        component_r0: npt.NDArray[np.float64],
+        tol=1e-8,
+    ):
         if self._problem is None:
             self._construct_problem(l_cs_value, r_cs_value, beta_value, component_r0)
         else:
@@ -52,13 +62,25 @@ class AbstractMinimization:
         return self._result()
 
     @abstractmethod
-    def _define_variables_and_parameters(self):
+    def _define_variables_and_parameters(
+        self,
+        l_cs_value: npt.NDArray[np.float64],
+        r_cs_value: npt.NDArray[np.float64],
+        beta_value: npt.NDArray[np.float64],
+        component_r0: npt.NDArray[np.float64],
+    ):
         pass
 
-    def update_weights(self, weights):
+    def update_weights(self, weights: npt.NDArray[np.float64]):
         self._weights.value = weights
 
-    def _construct_problem(self, l_cs_value, r_cs_value, beta_value, component_r0):
+    def _construct_problem(
+        self,
+        l_cs_value: npt.NDArray[np.float64],
+        r_cs_value: npt.NDArray[np.float64],
+        beta_value: npt.NDArray[np.float64],
+        component_r0: npt.NDArray[np.float64],
+    ):
         self._define_variables_and_parameters(
             l_cs_value, r_cs_value, beta_value, component_r0
         )
@@ -74,10 +96,18 @@ class AbstractMinimization:
         self._problem = problem
 
     @abstractmethod
-    def _update_parameters(self):
+    def _update_parameters(
+        self,
+        l_cs_value: npt.NDArray[np.float64],
+        r_cs_value: npt.NDArray[np.float64],
+        beta_value: npt.NDArray[np.float64],
+        component_r0: npt.NDArray[np.float64],
+    ):
         pass
 
-    def _term_f1(self, l_cs_param, r_cs_param):
+    def _term_f1(
+        self, l_cs_param: cvx.Expression, r_cs_param: cvx.Expression
+    ) -> cvx.Expression:
         """
         This method defines the generic from of the first term of objective
         function, which calculates a quantile regression cost function,
@@ -97,20 +127,34 @@ class AbstractMinimization:
         )
 
     @abstractmethod
-    def _term_f2(self, l_cs_param, r_cs_param):
+    def _term_f2(
+        self, l_cs_param: cvx.Expression, r_cs_param: cvx.Expression
+    ) -> cvx.Expression:
         pass
 
     @abstractmethod
-    def _term_f3(self, l_cs_param, r_cs_param):
+    def _term_f3(
+        self, l_cs_param: cvx.Expression, r_cs_param: cvx.Expression
+    ) -> cvx.Expression:
         pass
 
     @abstractmethod
-    def _constraints(self, l_cs_param, r_cs_param, beta_param, component_r0):
+    def _constraints(
+        self,
+        l_cs_param: cvx.Expression,
+        r_cs_param: cvx.Expression,
+        beta_param: cvx.Expression,
+        component_r0: cvx.Expression,
+    ) -> list[cvx.Constraint]:
         pass
 
     @abstractmethod
-    def _handle_exception(self, problem):
+    def _handle_exception(self, problem: cvx.Problem):
         pass
 
-    def _result(self):
+    def _result(
+        self,
+    ) -> tuple[
+        npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]
+    ]:
         return self.left_matrix.value, self.right_matrix.value, self.beta.value

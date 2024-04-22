@@ -26,22 +26,23 @@ of Gaussian residuals
 
 """
 import numpy as np
+import numpy.typing as npt
 
 import cvxpy as cvx
 
 
 def _cvx_l2_l1d1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
-    w0=10,  # "hard-coded"
-    w1=50,  # optimized
+    w0=10.0,  # "hard-coded"
+    w1=50.0,  # optimized
     w2=1e5,
     yearly_periodic=False,
     return_all=False,
     solver="MOSEK",
     transition_locs=None,
     verbose=False,
-):
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in: solardatatools/algorithms/time_shifts.py
 
@@ -121,16 +122,16 @@ def _cvx_l2_l1d1_l2d2p365(
 
 
 def _cvx_tl1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
     tau=0.75,  # passed as 0.05/0.1 (sunrise), 0.95/0.9 (sunset)
-    w0=1,
-    w1=500,
+    w0=1.0,
+    w1=500.0,
     yearly_periodic=True,
     return_all=False,
     solver="MOSEK",
     verbose=False,
-):
+) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in:
         solardatatools/algorithms/sunrise_sunset_estimation.py
@@ -162,10 +163,9 @@ def _cvx_tl1_l2d2p365(
         w0 * cvx.sum(0.5 * cvx.abs(r) + (tau - 0.5) * r)
         + w1 * cvx.sum_squares(cvx.diff(x, k=2))
     )
+    constraints:list[cvx.Constraint] = []
     if len(signal) > 365 and yearly_periodic:
         constraints = [x[365:] == x[:-365]]
-    else:
-        constraints = []
     problem = cvx.Problem(objective, constraints=constraints)
     problem.solve(solver=solver, verbose=verbose)
 
@@ -176,16 +176,16 @@ def _cvx_tl1_l2d2p365(
 
 
 def _cvx_l1_l1d1_l2d2p365(
-    signal,
+    signal: npt.NDArray[np.float64],
     use_ixs=None,
-    w0=3,  # l1 term
-    w1=18,  # l1d1 term
-    w2=6000,  # seasonal term
-    w3=300,  # linear term
+    w0=3.0,  # l1 term
+    w1=18.0,  # l1d1 term
+    w2=6000.0,  # seasonal term
+    w3=300.0,  # linear term
     return_all=False,
     solver="MOSEK",
     verbose=False,
-):
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Used in solardatatools/algorithms/capacity_change.py
 
@@ -254,8 +254,9 @@ def _cvx_l1_l1d1_l2d2p365(
 
 
 def _cvx_l2_l1d2_constrained(
-    signal, w1=1e1, return_all=False, solver="MOSEK", verbose=False
-):
+    signal: npt.NDArray[np.float64],
+    , w1=1e1, return_all=False, solver="MOSEK", verbose=False
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], float]:
     """
     Used in solardatatools/algorithms/clipping.py
 
@@ -279,7 +280,7 @@ def _cvx_l2_l1d2_constrained(
     reg = cvx.norm(cvx.diff(y_hat, k=2), p=1)
 
     objective = cvx.Minimize(error + mu * reg)
-    constraints = [y_hat[0] == 0, y_hat[-1] == 1]
+    constraints:list[cvx.Constraint] = [y_hat[0] == 0, y_hat[-1] == 1]
     problem = cvx.Problem(objective, constraints)
     problem.solve(solver=solver, verbose=verbose)
 
