@@ -5,28 +5,34 @@ on: [push]
 env:
   PYTHON_VERSION: '3.12'
   AWS_REGION: 'us-west-1'
-  MOSEK_LICENSE: 's3://slac.gismo.ci.artifacts/mosek.license/mosek.lic'
+  USE_MOSEK: 'false'
+
 jobs:
     run-tests:
         runs-on: ubuntu-latest
         steps:
-          - name: Compute checkout depth
-            shell: bash
+          - name: Configure AWS Credentials
+            uses: aws-actions/configure-aws-credentials@v4
+            if: env.USE_MOSEK == 'true'
+            with:
+              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws-region: ${{ env.AWS_REGION }}
+
+          - name: Setup Mosek License File
+            if: env.USE_MOSEK == 'true'
+            env:
+              MOSEK_LICENSE: 's3://slac.gismo.ci.artifacts/mosek.license/mosek.lic'
             run: |
-              if [ "${{ github.event_name }}" == "push" ]; then
-                echo "depth=$(($(jq length <<< '${{ toJson(github.event.commits) }}') + 2))" >> $GITHUB_ENV
-                echo "branch=${{ github.ref_name }}" >> $GITHUB_ENV
-              fi
-              if [ "${{ github.event_name }}" == "pull_request" ]; then
-                echo "depth=$((${{ github.event.pull_request.commits }}+2))" >> $GITHUB_ENV
-                echo "branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
-              fi
+              sudo mkdir /root/mosek
+              mkdir $HOME/mosek
+              aws s3 cp ${{env.MOSEK_LICENSE}} $HOME/mosek/mosek.lic
+              sudo cp $HOME/mosek/mosek.lic /root/mosek/mosek.lic
 
           - name: Checkout Repository
             uses: actions/checkout@v4
             with:
-              fetch-depth: ${{ env.depth }}
-              ref: ${{ env.branch }}
+              fetch-depth: 1
               fetch-tags: true
 
           - name: TruffleHog OSS
@@ -43,21 +49,6 @@ jobs:
             run: |
                 curl -LsSf https://astral.sh/uv/install.sh | sh
                 uv pip install --system --break-system-packages -r requirements.txt
-
-#          - name: Configure AWS Credentials
-#            uses: aws-actions/configure-aws-credentials@v4
-#            with:
-#              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#              aws-region: ${{ env.AWS_REGION }}
-#
-#          - name: Setup Mosek License File
-#            run: |
-#              sudo mkdir /root/mosek
-#              mkdir $HOME/mosek
-#              aws s3 cp ${{env.MOSEK_LICENSE}} $HOME/mosek/mosek.lic
-#              sudo cp $HOME/mosek/mosek.lic /root/mosek/mosek.lic
-
           - name: Run Unit Tests
             env:
               pytest_github_report: true
