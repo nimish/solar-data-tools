@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-""" Data Handler Module
+"""Data Handler Module
 
 This module contains a class for managing a data processing pipeline
 
@@ -18,6 +17,7 @@ import matplotlib.cm as cm
 import traceback
 import sys
 from tqdm import tqdm
+from solardatatools.polar_transform import PolarTransform
 from solardatatools.time_axis_manipulation import (
     make_time_series,
     standardize_time_axis,
@@ -113,7 +113,7 @@ class DataHandler:
     def _initialize_attributes(self):
         self.filled_data_matrix = None
         self.use_column = None
-        self.capacity_estimate = None
+        self.capacity_estimate: float = None
         self.start_doy = None
         self.day_index = None
         self.power_units = None
@@ -125,9 +125,9 @@ class DataHandler:
         self.extra_quality_scores = {}
         ## Scores for the entire data set ##
         # Fraction of days without data acquisition errors
-        self.data_quality_score = None
+        self.data_quality_score: float = None
         # Fraction of days that are approximately clear/sunny
-        self.data_clearness_score = None
+        self.data_clearness_score: float = None
         ##  Flags for the entire data set ##
         # True if there is inverter clipping, false otherwise
         self.inverter_clipping = None
@@ -458,7 +458,7 @@ class DataHandler:
                     periodic_detector=periodic_detector,
                     solver=solver,
                 )
-                rms = lambda x: np.sqrt(np.mean(np.square(x)))
+                rms = lambda x: np.sqrt(np.mean(np.square(x)))  # noqa: E731
                 if rms(self.time_shift_analysis.s2) > 0.25:
                     if verbose:
                         print("Invoking periodic timeshift detector.")
@@ -1053,9 +1053,9 @@ time zone errors     {report['time zone correction'] != 0}
         self.daily_scores.clipping_2 = self.clipping_analysis.clip_stat_2
         self.daily_flags.inverter_clipped = self.clipping_analysis.clipped_days
 
-    def find_clipped_times(self):
+    def find_clipped_times(self, solver="OSQP"):
         if self.clipping_analysis is None:
-            self.clipping_check(solver=solver_convex)
+            self.clipping_check(solver=solver)
         self.clipping_analysis.find_clipped_times()
         self.boolean_masks.clipped_times = self.clipping_analysis.clipping_mask
 
@@ -1432,7 +1432,7 @@ time zone errors     {report['time zone correction'] != 0}
         show_legend=False,
         marker=None,
     ):
-        if type(start_day) is not int:
+        if not isinstance(start_day, int):
             try:
                 loc = self.day_index == start_day
                 start_day = np.arange(self.num_days)[loc][0]

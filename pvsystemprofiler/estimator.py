@@ -5,6 +5,7 @@ and pre-process the data. The provided class will then estimate  longitude, lati
  'estimate_longitude', 'estimate_latitude' and 'estimate_orientation' methods, respectively. Alternatively, all four
  parameters can be estimated at once using the 'estimate_all' method.
 """
+
 # Standard Imports
 import numpy as np
 
@@ -269,7 +270,7 @@ class ConfigurationEstimator:
 
         for i, estimate in enumerate(dict_keys):
             if estimate == "latitude_estimate":
-                lat_estimate = estimates[i]
+                _ = estimates[i]
             if estimate == "tilt_estimate":
                 tilt_estimate = estimates[i]
             if estimate == "azimuth_estimate":

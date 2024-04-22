@@ -18,7 +18,8 @@ def longitude_fitting_and_calculation_test_data(
     solarnoon = np.genfromtxt(solarnoon_file_path, delimiter=",")
     # days
     days_file_path = fixtures_dir / "longitude" / "days.csv"
-    days = np.genfromtxt(days_file_path, dtype=bool, delimiter=",")
+    days = np.genfromtxt(days_file_path, delimiter=",")
+    days = days.astype(dtype=bool)
 
     return {
         "eot_duffie": eot_duffie,

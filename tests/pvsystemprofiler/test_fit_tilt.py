@@ -22,7 +22,8 @@ def tilt_data_files(fixtures_dir: Path) -> dict[str, np.ndarray]:
     costheta_fit = np.genfromtxt(costheta_fit_file_path, delimiter=",")
     # boolean_filter
     boolean_filter_file_path = fixtures_dir / "tilt_azimuth" / "boolean_filter.csv"
-    boolean_filter = np.genfromtxt(boolean_filter_file_path, dtype=bool, delimiter=",")
+    boolean_filter = np.genfromtxt(boolean_filter_file_path, delimiter=",")
+    boolean_filter = boolean_filter.astype(dtype=bool)
 
     return {
         "delta_f": delta_f,
