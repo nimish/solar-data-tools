@@ -1,13 +1,9 @@
 name: Tests
 
 on:
-  pull_request_target:
-    types:
-      - opened
-      - synchronize
+  pull_request:
     branches:
       - "main"
-
 env:
   # todo(nimish): extend to matrix of python versions/OS
   PYTHON_VERSION: "3.12"
