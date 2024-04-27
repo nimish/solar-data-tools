@@ -2,28 +2,37 @@ name: Deploy Main
 on:
   release:
     types: [published]
+
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
   deploy-pypi:
     runs-on: ubuntu-latest
-    environment: deployment
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
 
       - name: Install Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          cache: 'pip'
+          cache-dependency-path: |
+            **/setup.py
+            **/requirements*.txt
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Twine
         run: sudo pip install twine
 
       - name: Create the distribution
         run: |
-          git fetch --prune --unshallow --tags
           sudo python setup.py sdist bdist_wheel
 
       - name: Publish package distributions to PyPI
@@ -35,18 +44,20 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    environment: deployment
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
+        uses: actions/checkout@v4
         with:
-          python-version: "3.10"
+          fetch-depth: 1
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       # Much better than manual installation, original version Miniconda2-4.7.10-Linux-x86_64.sh is broken
       - name: Install Miniconda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: true
           activate-environment: ""
@@ -57,8 +68,7 @@ jobs:
           conda config --set always_yes yes --set auto_update_conda false
           conda install conda=24.1.2
           conda install -n base conda-libmamba-solver
-          conda install python=3.10 conda-build colorama pip ruamel ruamel.yaml rich jsonschema -c conda-forge
-          git fetch --prune --unshallow --tags
+          conda install python=3.12 conda-build colorama pip ruamel ruamel.yaml rich jsonschema -c conda-forge
           pip install -e .
 
       # echo yes before login to prevent anaconda bug breaking automation
@@ -67,14 +77,23 @@ jobs:
       # channels need to be specified on build and are saved in the package for installs
       - name: Build the Anaconda Package
         id: condabuild
+        env:
+          NUMPY_VERSION: "1.22.0"
         run: |
           conda install anaconda-client
           conda config --set anaconda_upload no --set solver libmamba
-          echo yes | anaconda login --username ${{ secrets.ANACONDA_CLOUD_USERNAME }} --password ${{ secrets.ANACONDA_CLOUD_PASSWORD }}
-          VERSION_FROM_GIT_TAG=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-) conda build . -c mosek -c anaconda -c pvlib -c slacgismo -c conda-forge --numpy 1.22.0
-          echo "gitversion=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-)" >> $GITHUB_OUTPUT
+          export VERSION_FROM_GIT_TAG=$(git tag --list "v*[0-9]" --sort=version:refname | tail -1 | cut -c 2-)
+          conda build . -c mosek -c anaconda -c pvlib -c slacgismo -c conda-forge --numpy '${NUMPY_VERSION}'
+          echo "$VERSION_FROM_GIT_TAG" >> $GITHUB_OUTPUT
+
+      - name: publish-to-conda
+        uses: fcakyon/conda-publish-action@v1.3
+        with:
+          subdir: 'conda'
+          anacondatoken: ${{ secrets.ANACONDA_TOKEN }}
+          platforms: 'noarch'
 
       - name: Upload the Anaconda Package
         id: condaload
         run: |
-          anaconda upload -u slacgismo  /usr/share/miniconda3/conda-bld/noarch/solar-data-tools-${{ steps.condabuild.outputs.gitversion }}-*.tar.bz2
+          anaconda upload -u slacgismo /usr/share/miniconda3/conda-bld/noarch/solar-data-tools-${{ steps.condabuild.outputs.gitversion }}-*.tar.bz2
