@@ -1,57 +1,53 @@
-import unittest
+import pytest
 from pathlib import Path
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from solardatatools import standardize_time_axis, make_2d
 
 
-class TestStandardizeTimeAxis(unittest.TestCase):
-    def test_standardize_time_axis(self):
-        filepath = Path(__file__).parent.parent
-        data_file_path = filepath / "fixtures" / "data_transforms" / "timeseries.csv"
-        data = pd.read_csv(data_file_path, index_col=0, parse_dates=True)
-        expected_data_file_path = (
-            filepath / "fixtures" / "data_transforms" / "timeseries_standardized.csv"
-        )
-        expected_output = pd.read_csv(
-            expected_data_file_path, index_col=0, parse_dates=True
-        )
-        actual_output, _ = standardize_time_axis(data, timeindex=True)
-        np.testing.assert_array_almost_equal(expected_output, actual_output)
+@pytest.fixture
+def data_transforms_files(fixtures_dir: Path) -> dict[str, pd.DataFrame]:
+    # importing input for fit_longitude
+    data_file_path = fixtures_dir / "data_transforms" / "timeseries.csv"
+    data = pd.read_csv(data_file_path, index_col=0, parse_dates=True)
+    timeseries_standardized_file_path = (
+        fixtures_dir / "data_transforms" / "timeseries_standardized.csv"
+    )
+    timeseries_standardized = pd.read_csv(
+        timeseries_standardized_file_path, index_col=0, parse_dates=True
+    )
+    power_mat_file_path = fixtures_dir / "data_transforms" / "power_mat.csv"
+    with open(power_mat_file_path) as file:
+        power_mat = np.genfromtxt(file, delimiter=",")
+    return {
+        "data": data,
+        "timeseries_standardized": timeseries_standardized,
+        "power_mat": power_mat,
+    }
 
 
-class TestMake2D(unittest.TestCase):
-    def test_make_2d_with_freq_set(self):
-        filepath = Path(__file__).parent.parent
-        data_file_path = (
-            filepath / "fixtures" / "data_transforms" / "timeseries_standardized.csv"
-        )
-        data = pd.read_csv(data_file_path, index_col=0, parse_dates=True)
-        expected_data_file_path = (
-            filepath / "fixtures" / "data_transforms" / "power_mat.csv"
-        )
-        with open(expected_data_file_path) as file:
-            expected_output = np.genfromtxt(file, delimiter=",")
-        data.index.freq = pd.tseries.offsets.Second(300)
-        key = data.columns[0]
-        actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
-        np.testing.assert_array_almost_equal(expected_output, actual_output)
-
-    def test_make_2d_no_freq(self):
-        filepath = Path(__file__).parent.parent
-        data_file_path = (
-            filepath / "fixtures" / "data_transforms" / "timeseries_standardized.csv"
-        )
-        data = pd.read_csv(data_file_path, index_col=0, parse_dates=True)
-        expected_data_file_path = (
-            filepath / "fixtures" / "data_transforms" / "power_mat.csv"
-        )
-        with open(expected_data_file_path) as file:
-            expected_output = np.genfromtxt(file, delimiter=",")
-        key = data.columns[0]
-        actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
-        np.testing.assert_array_almost_equal(expected_output, actual_output)
+def test_standardize_time_axis(data_transforms_files: dict[str, pd.DataFrame]):
+    data = data_transforms_files["data"]
+    expected_output = data_transforms_files["timeseries_standardized"]
+    actual_output, _ = standardize_time_axis(data, timeindex=True)
+    np.testing.assert_array_almost_equal(expected_output, actual_output)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_make_2d_with_freq_set(data_transforms_files: dict[str, pd.DataFrame]):
+    data = data_transforms_files["timeseries_standardized"]
+    expected_output = data_transforms_files["power_mat"]
+    data.index.freq = pd.tseries.offsets.Second(300)
+    key = data.columns[0]
+    actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
+    assert isinstance(actual_output, npt.NDArray[np.float64])
+    np.testing.assert_array_almost_equal(expected_output, actual_output)
+
+
+def test_make_2d_no_freq(data_transforms_files: dict[str, pd.DataFrame]):
+    data = data_transforms_files["timeseries_standardized"]
+    expected_output = data_transforms_files["power_mat"]
+    key = data.columns[0]
+    actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
+    assert isinstance(actual_output, npt.NDArray[np.float64])
+    np.testing.assert_array_almost_equal(expected_output, actual_output)
