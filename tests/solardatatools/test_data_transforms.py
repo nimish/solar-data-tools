@@ -1,7 +1,6 @@
 import pytest
 from pathlib import Path
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from solardatatools import standardize_time_axis, make_2d
 
@@ -40,7 +39,7 @@ def test_make_2d_with_freq_set(data_transforms_files: dict[str, pd.DataFrame]):
     data.index.freq = pd.tseries.offsets.Second(300)
     key = data.columns[0]
     actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
-    assert isinstance(actual_output, npt.NDArray[np.float64])
+    assert isinstance(actual_output, np.ndarray)
     np.testing.assert_array_almost_equal(expected_output, actual_output)
 
 
@@ -49,5 +48,5 @@ def test_make_2d_no_freq(data_transforms_files: dict[str, pd.DataFrame]):
     expected_output = data_transforms_files["power_mat"]
     key = data.columns[0]
     actual_output = make_2d(data, key=key, trim_start=True, trim_end=True)
-    assert isinstance(actual_output, npt.NDArray[np.float64])
+    assert isinstance(actual_output, np.ndarray)
     np.testing.assert_array_almost_equal(expected_output, actual_output)
