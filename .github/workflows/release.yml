@@ -68,8 +68,8 @@ jobs:
           conda config --set always_yes yes --set auto_update_conda false
           conda install conda=24.1.2
           conda install -n base conda-libmamba-solver
-          conda install python=3.12 conda-build colorama pip ruamel ruamel.yaml rich jsonschema -c conda-forge
-          pip install -e .
+          conda install python=3.12 conda-build colorama pip ruamel ruamel.yaml rich jsonschema uv -c conda-forge
+          uv pip install -e .
 
       # echo yes before login to prevent anaconda bug breaking automation
       # git tags MUST be fetched otherwise output will be blank

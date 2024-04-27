@@ -6,6 +6,9 @@ on:
 jobs:
   build-pypi:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -15,7 +18,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install Twine
         run: sudo pip install twine
@@ -27,6 +30,9 @@ jobs:
   build-conda:
     runs-on: ubuntu-latest
     # sets default shell to remove need for source to run the conda shell
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     defaults:
       run:
         shell: bash -l {0}
@@ -39,7 +45,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       # Much better than manual installation, original version Miniconda2-4.7.10-Linux-x86_64.sh is broken
       - name: Install Miniconda
@@ -52,11 +58,10 @@ jobs:
       - name: Install the Conda Dependencies
         run: |
           conda config --set always_yes yes --set auto_update_conda false
-          conda install conda=24.1.2
+          conda install conda>=24.1.2
           conda install -n base conda-libmamba-solver
-          conda install python=3.12 conda-build colorama pip ruamel ruamel.yaml rich jsonschema -c conda-forge
-          git fetch --prune --unshallow --tags
-          pip install -e .
+          conda install python=${{matrix.python-version}} conda-build colorama pip ruamel ruamel.yaml rich jsonschema uv -c conda-forge
+          uv pip install -e .
 
       # echo yes before login to prevent anaconda bug breaking automation
       # git tags MUST be fetched otherwise output will be blank
